@@ -1,0 +1,3871 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0d12" />
+<title>Trading Tracker</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<!-- iOS PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tracker">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icons/apple-touch-icon-120.png">
+<!-- Favicons -->
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="shortcut icon" href="icons/favicon.ico">
+<style>
+/* ===========================================================
+   THEME TOKENS
+   =========================================================== */
+:root {
+  --bg: #0b0d12;
+  --bg-elev: #11141b;
+  --bg-elev-2: #161a23;
+  --surface: #1a1f2a;
+  --border: #232936;
+  --border-strong: #2e3647;
+  --text: #e7ebf2;
+  --text-dim: #9aa3b2;
+  --text-faint: #6b7280;
+  --accent: #6366f1;
+  --accent-hover: #7c7ff5;
+  --accent-soft: rgba(99, 102, 241, 0.12);
+  --pos: #22c55e;
+  --pos-soft: rgba(34, 197, 94, 0.12);
+  --neg: #ef4444;
+  --neg-soft: rgba(239, 68, 68, 0.12);
+  --warn: #f59e0b;
+  --warn-soft: rgba(245, 158, 11, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 6px 24px rgba(0,0,0,0.35);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,0.5);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --sidebar-w: 240px;
+  --topbar-h: 60px;
+  --mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+[data-theme="light"] {
+  --bg: #f7f8fa;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #ffffff;
+  --surface: #ffffff;
+  --border: #e6e8ee;
+  --border-strong: #d2d6df;
+  --text: #0f172a;
+  --text-dim: #5b6472;
+  --text-faint: #8a93a3;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: rgba(79, 70, 229, 0.08);
+  --pos: #16a34a;
+  --pos-soft: rgba(22, 163, 74, 0.10);
+  --neg: #dc2626;
+  --neg-soft: rgba(220, 38, 38, 0.10);
+  --warn: #d97706;
+  --warn-soft: rgba(217, 119, 6, 0.10);
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-md: 0 6px 20px rgba(15,23,42,0.08);
+  --shadow-lg: 0 18px 50px rgba(15,23,42,0.12);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+.muted { color: var(--text-dim); }
+.faint { color: var(--text-faint); }
+
+/* ===========================================================
+   LAYOUT
+   =========================================================== */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-areas: "sidebar topbar" "sidebar main";
+  height: 100vh;
+  overflow: hidden;
+}
+.sidebar {
+  grid-area: sidebar;
+  background: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px 20px 10px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.brand-logo {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  display: grid; place-items: center;
+  color: white;
+}
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); padding: 14px 10px 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13.5px;
+  transition: background 0.12s, color 0.12s;
+}
+.nav-item:hover { background: var(--bg-elev-2); color: var(--text); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.topbar {
+  grid-area: topbar;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 24px;
+}
+.topbar-stats { display: flex; gap: 24px; align-items: center; }
+.topbar-stat { display: flex; flex-direction: column; line-height: 1.2; }
+.topbar-stat .label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.topbar-stat .value { font-family: var(--mono); font-weight: 600; font-size: 15px; }
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.main {
+  grid-area: main;
+  overflow-y: auto;
+  padding: 24px;
+}
+.main-inner { max-width: 1400px; margin: 0 auto; }
+
+.menu-toggle { display: none; background: transparent; border: none; color: var(--text); padding: 8px; }
+
+/* ===========================================================
+   BUTTONS
+   =========================================================== */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.12s, border-color 0.12s, transform 0.05s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface); border-color: var(--border-strong); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn svg { width: 14px; height: 14px; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-danger { background: var(--neg); border-color: var(--neg); color: white; }
+.btn-danger:hover { filter: brightness(1.08); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+.btn-ghost:hover { background: var(--bg-elev-2); color: var(--text); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon { padding: 7px; }
+
+/* ===========================================================
+   CARDS / SECTIONS
+   =========================================================== */
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+.page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+.page-subtitle { color: var(--text-dim); margin: 4px 0 0; font-size: 13.5px; }
+.page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.card-title { font-size: 13px; color: var(--text-dim); font-weight: 500; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-12 { grid-template-columns: repeat(12, 1fr); }
+.span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; }
+.span-8 { grid-column: span 8; }
+.span-12 { grid-column: span 12; }
+
+.stat {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); }
+.stat-value { font-family: var(--mono); font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
+.stat-sub { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+
+/* ===========================================================
+   TABLES
+   =========================================================== */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+  white-space: nowrap;
+  cursor: default;
+}
+thead th.sortable { cursor: pointer; }
+thead th.sortable:hover { color: var(--text); }
+thead th .sort-arrow { display: inline-block; margin-left: 4px; opacity: 0.5; }
+tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: var(--bg-elev-2); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+.pill-buy { background: var(--pos-soft); color: var(--pos); }
+.pill-sell { background: var(--neg-soft); color: var(--neg); }
+.pill-open { background: var(--accent-soft); color: var(--accent); }
+.pill-closed { background: var(--bg-elev-2); color: var(--text-dim); }
+
+/* ===========================================================
+   FORMS
+   =========================================================== */
+.form-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-full { grid-column: 1 / -1; }
+.field label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+.field .hint { font-size: 11px; color: var(--text-faint); }
+.field .error { font-size: 11px; color: var(--neg); }
+input[type="text"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="email"], select, textarea {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  color: var(--text);
+  font-size: 13.5px;
+  width: 100%;
+  transition: border-color 0.12s, background 0.12s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+textarea { resize: vertical; min-height: 70px; }
+input.invalid, select.invalid, textarea.invalid { border-color: var(--neg); }
+input[type="range"] { padding: 0; width: 100%; }
+input[type="file"] { padding: 6px; }
+.range-wrap { display: flex; align-items: center; gap: 10px; }
+.range-wrap .range-val { font-family: var(--mono); font-weight: 600; min-width: 24px; text-align: right; }
+
+.checklist { display: flex; flex-direction: column; gap: 8px; }
+.checklist-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.checklist-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.12s;
+}
+.chip:hover { border-color: var(--border-strong); }
+.chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip-remove { color: var(--text-faint); margin-left: 2px; }
+
+/* ===========================================================
+   MODAL
+   =========================================================== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  display: grid; place-items: center;
+  z-index: 100; padding: 24px;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease-out;
+}
+.modal {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 640px;
+  max-height: 90vh; overflow-y: auto;
+  animation: slideUp 0.18s ease-out;
+}
+.modal-lg { max-width: 880px; }
+.modal-sm { max-width: 440px; }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg-elev); z-index: 1;
+}
+.modal-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.modal-body { padding: 22px; }
+.modal-footer {
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px;
+  position: sticky; bottom: 0; background: var(--bg-elev);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===========================================================
+   TOAST
+   =========================================================== */
+.toast-wrap { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  animation: slideIn 0.2s ease-out;
+  max-width: 360px;
+}
+.toast-success { border-left: 3px solid var(--pos); }
+.toast-error { border-left: 3px solid var(--neg); }
+.toast-info { border-left: 3px solid var(--accent); }
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ===========================================================
+   ONBOARDING
+   =========================================================== */
+.onboarding {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: grid; place-items: center;
+  z-index: 50;
+  padding: 24px;
+  overflow-y: auto;
+}
+.onboarding-card {
+  width: 100%; max-width: 520px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-lg);
+}
+.onboarding-step-indicator { display: flex; gap: 6px; margin-bottom: 24px; }
+.onboarding-step-indicator > div { flex: 1; height: 3px; background: var(--border); border-radius: 2px; }
+.onboarding-step-indicator > div.active { background: var(--accent); }
+.onboarding h1 { font-size: 24px; margin: 0 0 8px; letter-spacing: -0.02em; }
+.onboarding p { color: var(--text-dim); margin: 0 0 24px; font-size: 14px; }
+.onboarding .privacy-points { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 26px; }
+.onboarding .privacy-point { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; }
+.onboarding .privacy-point svg { width: 18px; height: 18px; color: var(--pos); flex-shrink: 0; margin-top: 1px; }
+
+/* ===========================================================
+   CHARTS
+   =========================================================== */
+.chart-wrap { position: relative; width: 100%; }
+.chart-svg { display: block; width: 100%; height: auto; }
+.chart-grid line { stroke: var(--border); stroke-dasharray: 2 4; }
+.chart-axis text { fill: var(--text-faint); font-size: 10px; font-family: var(--mono); }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.chart-area { fill: var(--accent-soft); }
+.chart-bar { fill: var(--accent); }
+.chart-bar-pos { fill: var(--pos); }
+.chart-bar-neg { fill: var(--neg); }
+.chart-tooltip {
+  position: absolute;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: var(--mono);
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  display: none;
+}
+.donut-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 12px; }
+.donut-legend .item { display: flex; align-items: center; gap: 6px; }
+.donut-legend .swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+.heatmap { display: grid; gap: 2px; font-size: 0; }
+.heatmap-cell { aspect-ratio: 1; border-radius: 2px; }
+.heatmap-cell.empty { background: var(--bg-elev-2); }
+
+/* ===========================================================
+   EMPTY STATE
+   =========================================================== */
+.empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-dim);
+}
+.empty-icon {
+  width: 48px; height: 48px;
+  margin: 0 auto 16px;
+  color: var(--text-faint);
+  background: var(--bg-elev-2);
+  border-radius: 50%;
+  display: grid; place-items: center;
+}
+.empty-title { font-size: 16px; color: var(--text); font-weight: 600; margin: 0 0 6px; }
+.empty-text { font-size: 13.5px; margin: 0 0 18px; }
+
+/* ===========================================================
+   MISC
+   =========================================================== */
+.banner {
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+}
+.banner .banner-actions { margin-left: auto; display: flex; gap: 6px; }
+.banner svg { width: 18px; height: 18px; flex-shrink: 0; }
+.brand-logo svg { width: 16px; height: 16px; }
+.empty-icon svg { width: 22px; height: 22px; }
+.topbar-actions svg { width: 14px; height: 14px; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.tab {
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.filter-bar input, .filter-bar select { width: auto; min-width: 140px; padding: 7px 10px; font-size: 12.5px; }
+
+.detail-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+.detail-field { display: flex; flex-direction: column; gap: 2px; }
+.detail-field .label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.detail-field .value { font-size: 14px; }
+.detail-screenshot { max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 12px; }
+
+.keyhint {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+/* ===========================================================
+   PWA — safe areas for iOS standalone mode (notch + home indicator)
+   =========================================================== */
+@supports (padding: max(0px)) {
+  /* Push topbar content below the notch; extend the grid row to match. */
+  .app { grid-template-rows: calc(var(--topbar-h) + env(safe-area-inset-top)) 1fr; }
+  .topbar {
+    padding-top: max(0px, env(safe-area-inset-top));
+    height: calc(var(--topbar-h) + env(safe-area-inset-top));
+  }
+  .sidebar { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+  .main { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+  /* On mobile, the sidebar is the bottom tab bar — keep its content
+     above the home indicator. */
+  @media (max-width: 768px) {
+    .app { grid-template-rows: calc(var(--topbar-h) + env(safe-area-inset-top)) 1fr calc(56px + env(safe-area-inset-bottom)); }
+    .sidebar { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+  }
+}
+
+/* ===========================================================
+   RESPONSIVE
+   =========================================================== */
+@media (max-width: 1100px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .span-4 { grid-column: span 6; }
+  .span-6 { grid-column: span 12; }
+  .span-8 { grid-column: span 12; }
+}
+@media (max-width: 768px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--topbar-h) 1fr 56px;
+    grid-template-areas: "topbar" "main" "sidebar";
+  }
+  .sidebar {
+    border-right: none;
+    border-top: 1px solid var(--border);
+    flex-direction: row;
+    padding: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .brand, .nav-section { display: none; }
+  .nav { flex-direction: row; gap: 2px; flex: 1; justify-content: space-around; }
+  .nav-item {
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    font-size: 10px;
+    min-width: 56px;
+    text-align: center;
+  }
+  .nav-item svg { width: 18px; height: 18px; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-stats { gap: 12px; }
+  .topbar-stat .label { font-size: 9px; }
+  .topbar-stat .value { font-size: 13px; }
+  .main { padding: 14px; }
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .modal { max-height: 95vh; }
+  .modal-header, .modal-body, .modal-footer { padding: 14px 16px; }
+  /* Tables → cards on mobile */
+  .table-mobile-cards thead { display: none; }
+  .table-mobile-cards tbody, .table-mobile-cards tr, .table-mobile-cards td { display: block; width: 100%; }
+  .table-mobile-cards tr {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    padding: 12px;
+  }
+  .table-mobile-cards td {
+    border: none;
+    padding: 4px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .table-mobile-cards td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  .table-mobile-cards td.num { text-align: right; }
+}
+@media (max-width: 480px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ===========================================================
+   PRINT (monthly report)
+   =========================================================== */
+@media print {
+  body { background: white; color: black; font-size: 11pt; }
+  .sidebar, .topbar, .page-actions, .btn, .no-print { display: none !important; }
+  .app { display: block; height: auto; overflow: visible; }
+  .main { overflow: visible; padding: 0; }
+  .card, .stat, .table-wrap { border: 1px solid #ccc; background: white; box-shadow: none; page-break-inside: avoid; }
+  .pos { color: #166534; }
+  .neg { color: #991b1b; }
+  thead th { background: #f4f4f4; color: #333; }
+  .heatmap-cell { border: 1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div class="toast-wrap" id="toast-root"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   ICONS — inline SVG library. All icons get a `width` and `height`
+   set via CSS. `currentColor` keeps them theme-aware.
+   ============================================================ */
+const ICONS = {
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  trades: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+  portfolio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>',
+  analytics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  watchlist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  journal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  print: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+  arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+};
+function icon(name, extraClass = '') {
+  return '<span class="ico ' + extraClass + '">' + (ICONS[name] || '') + '</span>';
+}
+
+/* ============================================================
+   PWA — platform detection + install state.
+   Lives here so it's available to renderShell() when the topbar
+   decides whether to show the install button.
+   ============================================================ */
+const Platform = (() => {
+  const ua = navigator.userAgent;
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  // iOS exposes Chrome/Firefox/Edge via their CriOS/FxiOS/EdgiOS UA tokens
+  const isIOSNonSafari = isIOS && /CriOS|FxiOS|EdgiOS|OPiOS|mercury/i.test(ua);
+  const isIOSSafari = isIOS && !isIOSNonSafari;
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+  return { isIOS, isAndroid, isIOSSafari, isIOSNonSafari, isStandalone };
+})();
+
+// Stashed beforeinstallprompt event for Android / desktop Chrome / Edge.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Re-render the shell so the install button picks up the new state.
+  const btn = document.querySelector('[data-action="install-app"]');
+  if (btn) btn.hidden = Platform.isStandalone;
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const btn = document.querySelector('[data-action="install-app"]');
+  if (btn) btn.hidden = true;
+  toast('Installed. You can launch from your home screen.', 'success');
+});
+
+/* ============================================================
+   STORE — single source of truth, persisted to localStorage.
+   Screenshots are kept in IndexedDB because base64 images can
+   blow past the localStorage quota.
+   ============================================================ */
+const STORE_KEY = 'tradingTracker.v1';
+const STORE_VERSION = 1;
+
+const DEFAULT_STATE = () => ({
+  meta: {
+    version: STORE_VERSION,
+    createdAt: new Date().toISOString(),
+    lastBackup: null,
+    currency: 'USD',
+    dateFormat: 'MM/DD/YYYY',
+    decimals: 2,
+    theme: 'dark',
+    onboarded: false,
+    backupSnoozeUntil: null,
+  },
+  accounts: [],
+  trades: [],
+  watchlists: [{ id: uid(), name: 'Main', items: [] }],
+  currentPrices: {},
+  journal: { daily: {}, weekly: {}, monthly: {} },
+  goals: { annualReturnPct: null, monthlyContribution: null, milestones: [] },
+  customTags: {
+    strategy: ['Swing', 'Day', 'Scalp', 'Position', 'DCA', 'Long-term'],
+    setup: ['Breakout', 'Pullback', 'Reversal', 'News', 'Earnings', 'Other'],
+    mistake: [
+      'FOMO entry', 'No stop loss', 'Oversized position', 'Revenge trade',
+      'Ignored thesis', 'Overtrading', 'Chased price', 'Exited too early',
+      'Held too long', 'Averaged down on loser'
+    ],
+  },
+  checklist: {
+    items: [
+      { id: uid(), text: 'Checked higher timeframe', enabled: true },
+      { id: uid(), text: 'Risk is ≤ 2% of account', enabled: true },
+      { id: uid(), text: 'Stop loss is set', enabled: true },
+      { id: uid(), text: 'Market is liquid and open', enabled: true },
+    ],
+    required: false,
+  },
+});
+
+const Store = (() => {
+  let state = null;
+  const subscribers = new Set();
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) { state = DEFAULT_STATE(); return; }
+      const parsed = JSON.parse(raw);
+      state = migrate(parsed);
+    } catch (err) {
+      console.error('Failed to load state', err);
+      state = DEFAULT_STATE();
+    }
+  }
+
+  function migrate(s) {
+    // Forward-compat shell. v1 only: fill in any missing keys.
+    const def = DEFAULT_STATE();
+    return {
+      meta: Object.assign({}, def.meta, s.meta || {}),
+      accounts: s.accounts || [],
+      trades: s.trades || [],
+      watchlists: s.watchlists && s.watchlists.length ? s.watchlists : def.watchlists,
+      currentPrices: s.currentPrices || {},
+      journal: Object.assign({}, def.journal, s.journal || {}),
+      goals: Object.assign({}, def.goals, s.goals || {}),
+      customTags: Object.assign({}, def.customTags, s.customTags || {}),
+      checklist: Object.assign({}, def.checklist, s.checklist || {}),
+    };
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch (err) {
+      console.error('Failed to persist', err);
+      toast('Could not save — storage may be full', 'error');
+    }
+  }
+
+  function get() { return state; }
+
+  function set(updater) {
+    if (typeof updater === 'function') updater(state);
+    else state = updater;
+    persist();
+    subscribers.forEach(fn => { try { fn(state); } catch (e) { console.error(e); } });
+  }
+
+  function subscribe(fn) { subscribers.add(fn); return () => subscribers.delete(fn); }
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'trading-tracker-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    set(s => { s.meta.lastBackup = new Date().toISOString(); });
+  }
+
+  function importJSON(json) {
+    try {
+      const parsed = typeof json === 'string' ? JSON.parse(json) : json;
+      state = migrate(parsed);
+      persist();
+      subscribers.forEach(fn => fn(state));
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
+
+  function reset() {
+    state = DEFAULT_STATE();
+    state.meta.onboarded = true; // user already used the app
+    persist();
+    Screenshots.clearAll();
+    subscribers.forEach(fn => fn(state));
+  }
+
+  return { load, get, set, subscribe, exportJSON, importJSON, reset };
+})();
+
+/* ============================================================
+   SCREENSHOTS — IndexedDB store for trade screenshots.
+   ============================================================ */
+const Screenshots = (() => {
+  const DB_NAME = 'tradingTracker';
+  const STORE = 'screenshots';
+  let dbPromise = null;
+
+  function open() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function put(id, dataUrl) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(dataUrl, id);
+      tx.oncomplete = () => resolve(id);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function get(id) {
+    if (!id) return null;
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function remove(id) {
+    if (!id) return;
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function clearAll() {
+    try {
+      const db = await open();
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+    } catch (e) { /* ignore */ }
+  }
+  return { put, get, remove, clearAll };
+})();
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+
+const CURRENCIES = {
+  USD: { symbol: '$',  code: 'USD' },
+  EUR: { symbol: '€',  code: 'EUR' },
+  GBP: { symbol: '£',  code: 'GBP' },
+  PKR: { symbol: '₨',  code: 'PKR' },
+  INR: { symbol: '₹',  code: 'INR' },
+  JPY: { symbol: '¥',  code: 'JPY' },
+  CAD: { symbol: 'C$', code: 'CAD' },
+  AUD: { symbol: 'A$', code: 'AUD' },
+};
+
+function fmtMoney(n, opts = {}) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  const meta = Store.get().meta;
+  const sym = (CURRENCIES[meta.currency] || CURRENCIES.USD).symbol;
+  const dec = opts.decimals != null ? opts.decimals : meta.decimals;
+  const sign = n < 0 ? '-' : (opts.signed && n > 0 ? '+' : '');
+  const abs = Math.abs(n);
+  return sign + sym + abs.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtNum(n, dec = 2) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtPct(n, opts = {}) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  const dec = opts.decimals != null ? opts.decimals : 2;
+  const sign = n < 0 ? '-' : (opts.signed && n > 0 ? '+' : '');
+  return sign + Math.abs(n).toFixed(dec) + '%';
+}
+function fmtDate(d, withTime = false) {
+  if (!d) return '—';
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return '—';
+  const meta = Store.get().meta;
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  let out;
+  if (meta.dateFormat === 'DD/MM/YYYY') out = dd + '/' + mm + '/' + yyyy;
+  else if (meta.dateFormat === 'YYYY-MM-DD') out = yyyy + '-' + mm + '-' + dd;
+  else out = mm + '/' + dd + '/' + yyyy;
+  if (withTime) {
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mn = String(date.getMinutes()).padStart(2, '0');
+    out += ' ' + hh + ':' + mn;
+  }
+  return out;
+}
+function localDateInput(d) {
+  // formats Date as YYYY-MM-DDTHH:MM for <input type="datetime-local">
+  const date = d instanceof Date ? d : new Date(d);
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date - tzOffset).toISOString().slice(0, 16);
+}
+function dayKey(d) {
+  const date = d instanceof Date ? d : new Date(d);
+  return date.toISOString().slice(0, 10);
+}
+function monthKey(d) {
+  const date = d instanceof Date ? d : new Date(d);
+  return date.toISOString().slice(0, 7);
+}
+function weekKey(d) {
+  // ISO week (rough): YYYY-WW
+  const date = new Date(Date.UTC(d.getFullYear ? d.getFullYear() : new Date(d).getFullYear(),
+                                  d.getMonth ? d.getMonth() : new Date(d).getMonth(),
+                                  d.getDate ? d.getDate() : new Date(d).getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return date.getUTCFullYear() + '-W' + String(week).padStart(2, '0');
+}
+function durationHuman(ms) {
+  if (!ms || ms < 0) return '—';
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ' + (m % 60) + 'm';
+  const d = Math.floor(h / 24);
+  if (d < 30) return d + 'd ' + (h % 24) + 'h';
+  return Math.floor(d / 30) + 'mo ' + (d % 30) + 'd';
+}
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+  ));
+}
+function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+/* ============================================================
+   TRADE MATH
+   ============================================================ */
+function tradeFees(t) { return (Number(t.entryFees) || 0) + (Number(t.exitFees) || 0); }
+function tradeGrossPL(t) {
+  if (t.status !== 'closed') return 0;
+  const dir = (t.side === 'Buy' || t.side === 'Cover') ? 1 : -1;
+  return dir * (Number(t.exitPrice) - Number(t.entryPrice)) * Number(t.quantity);
+}
+function tradeNetPL(t) { return tradeGrossPL(t) - tradeFees(t); }
+function tradePLPct(t) {
+  if (t.status !== 'closed') return 0;
+  const cost = Number(t.entryPrice) * Number(t.quantity);
+  if (!cost) return 0;
+  return (tradeNetPL(t) / cost) * 100;
+}
+function tradeRiskPerShare(t) {
+  if (!t.stopLoss) return null;
+  return Math.abs(Number(t.entryPrice) - Number(t.stopLoss));
+}
+function tradeInitialRisk(t) {
+  const rps = tradeRiskPerShare(t);
+  if (rps == null) return null;
+  return rps * Number(t.quantity);
+}
+function tradeRR(t) {
+  // planned risk/reward at entry
+  if (!t.stopLoss || !t.takeProfit) return null;
+  const risk = Math.abs(Number(t.entryPrice) - Number(t.stopLoss));
+  const reward = Math.abs(Number(t.takeProfit) - Number(t.entryPrice));
+  if (!risk) return null;
+  return reward / risk;
+}
+function tradeRMultiple(t) {
+  if (t.status !== 'closed') return null;
+  const risk = tradeInitialRisk(t);
+  if (!risk) return null;
+  return tradeNetPL(t) / risk;
+}
+function tradeHoldMs(t) {
+  if (!t.entryDate) return 0;
+  const end = t.status === 'closed' && t.exitDate ? new Date(t.exitDate) : new Date();
+  return end - new Date(t.entryDate);
+}
+function tradeCurrentValue(t, priceOverride) {
+  const price = priceOverride != null ? priceOverride : (Store.get().currentPrices[t.ticker]?.price);
+  if (price == null) return null;
+  return Number(price) * Number(t.quantity);
+}
+function tradeUnrealized(t) {
+  const price = Store.get().currentPrices[t.ticker]?.price;
+  if (price == null) return null;
+  const dir = (t.side === 'Buy' || t.side === 'Cover') ? 1 : -1;
+  return dir * (Number(price) - Number(t.entryPrice)) * Number(t.quantity) - (Number(t.entryFees) || 0);
+}
+
+/* ============================================================
+   PORTFOLIO METRICS
+   ============================================================ */
+function getStats() {
+  const s = Store.get();
+  const closed = s.trades.filter(t => t.status === 'closed');
+  const open = s.trades.filter(t => t.status === 'open');
+
+  const wins = closed.filter(t => tradeNetPL(t) > 0);
+  const losses = closed.filter(t => tradeNetPL(t) < 0);
+  const winRate = closed.length ? (wins.length / closed.length) * 100 : 0;
+  const grossWin = wins.reduce((a, t) => a + tradeNetPL(t), 0);
+  const grossLoss = Math.abs(losses.reduce((a, t) => a + tradeNetPL(t), 0));
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : 0);
+
+  const totalRealized = closed.reduce((a, t) => a + tradeNetPL(t), 0);
+  const startingCapital = s.accounts.reduce((a, acc) => a + (Number(acc.startingCapital) || 0), 0);
+
+  // Cost basis of currently-open positions
+  const openCost = open.reduce((a, t) => a + Number(t.entryPrice) * Number(t.quantity) + (Number(t.entryFees) || 0), 0);
+  // Current market value of open positions (uses manual prices when known)
+  const openValue = open.reduce((a, t) => {
+    const v = tradeCurrentValue(t);
+    return a + (v != null ? v : Number(t.entryPrice) * Number(t.quantity));
+  }, 0);
+  const openUnrealized = open.reduce((a, t) => {
+    const u = tradeUnrealized(t);
+    return a + (u != null ? u : 0);
+  }, 0);
+
+  const cash = startingCapital + totalRealized - openCost;
+  const portfolioValue = cash + openValue;
+  const allTimePL = portfolioValue - startingCapital;
+  const allTimePLPct = startingCapital > 0 ? (allTimePL / startingCapital) * 100 : 0;
+
+  // Today's P&L
+  const todayKey = dayKey(new Date());
+  const todayClosed = closed.filter(t => dayKey(t.exitDate) === todayKey);
+  const todayPL = todayClosed.reduce((a, t) => a + tradeNetPL(t), 0);
+  const todayPLPct = portfolioValue > 0 ? (todayPL / portfolioValue) * 100 : 0;
+
+  // Best / worst
+  const bestTrade = closed.length ? closed.reduce((b, t) => tradeNetPL(t) > tradeNetPL(b) ? t : b) : null;
+  const worstTrade = closed.length ? closed.reduce((w, t) => tradeNetPL(t) < tradeNetPL(w) ? t : w) : null;
+
+  // Streaks (chronological by exitDate)
+  const sortedClosed = [...closed].sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
+  let currentStreak = 0; let currentStreakKind = null;
+  let longestWin = 0; let runWin = 0;
+  for (const t of sortedClosed) {
+    const pl = tradeNetPL(t);
+    if (pl > 0) {
+      runWin++; longestWin = Math.max(longestWin, runWin);
+      currentStreak = currentStreakKind === 'win' ? currentStreak + 1 : 1;
+      currentStreakKind = 'win';
+    } else if (pl < 0) {
+      runWin = 0;
+      currentStreak = currentStreakKind === 'loss' ? currentStreak + 1 : 1;
+      currentStreakKind = 'loss';
+    }
+  }
+
+  // Drawdown from equity curve
+  const eq = equityCurve();
+  let peak = -Infinity, maxDD = 0;
+  for (const p of eq) {
+    if (p.value > peak) peak = p.value;
+    const dd = peak - p.value;
+    if (dd > maxDD) maxDD = dd;
+  }
+
+  const avgWin = wins.length ? grossWin / wins.length : 0;
+  const avgLoss = losses.length ? grossLoss / losses.length : 0;
+  const expectancy = closed.length ? totalRealized / closed.length : 0;
+
+  return {
+    portfolioValue, allTimePL, allTimePLPct, todayPL, todayPLPct,
+    cash, openValue, openUnrealized, openCost, startingCapital,
+    winRate, profitFactor, totalRealized,
+    wins: wins.length, losses: losses.length, total: closed.length,
+    bestTrade, worstTrade, longestWin, currentStreak, currentStreakKind,
+    maxDD, avgWin, avgLoss, expectancy,
+  };
+}
+
+function equityCurve() {
+  // cumulative realized P&L by exitDate
+  const s = Store.get();
+  const closed = s.trades
+    .filter(t => t.status === 'closed')
+    .sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
+  const startingCapital = s.accounts.reduce((a, acc) => a + (Number(acc.startingCapital) || 0), 0);
+  let cum = startingCapital;
+  const points = [{ date: s.meta.createdAt, value: cum }];
+  for (const t of closed) {
+    cum += tradeNetPL(t);
+    points.push({ date: t.exitDate, value: cum });
+  }
+  return points;
+}
+
+/* ============================================================
+   ROUTER — hash-based, supports #/route and #/route/param.
+   ============================================================ */
+const Router = (() => {
+  let current = '#/dashboard';
+  const handlers = {};
+  function on(route, fn) { handlers[route] = fn; }
+  function nav(to) {
+    if (location.hash !== to) location.hash = to;
+    else handle();
+  }
+  function handle() {
+    const hash = location.hash || '#/dashboard';
+    current = hash;
+    const parts = hash.replace(/^#\//, '').split('/');
+    const base = parts[0] || 'dashboard';
+    const fn = handlers[base] || handlers.dashboard;
+    if (fn) fn(parts.slice(1));
+  }
+  function init() {
+    window.addEventListener('hashchange', handle);
+    handle();
+  }
+  function getCurrent() { return current; }
+  return { on, nav, init, getCurrent };
+})();
+
+/* ============================================================
+   TOAST + MODAL + CONFIRM
+   ============================================================ */
+function toast(msg, kind = 'info', timeout = 3200) {
+  const root = document.getElementById('toast-root');
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + kind;
+  el.innerHTML = escapeHtml(msg);
+  root.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; el.style.transition = 'opacity 0.2s, transform 0.2s'; }, timeout - 200);
+  setTimeout(() => el.remove(), timeout);
+}
+
+function modal({ title, body, footer, size = '', onMount, onClose }) {
+  const root = document.getElementById('modal-root');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal ${size}">
+      <div class="modal-header">
+        <h3>${escapeHtml(title || '')}</h3>
+        <button class="btn btn-ghost btn-icon" data-close aria-label="Close">${ICONS.close}</button>
+      </div>
+      <div class="modal-body">${body || ''}</div>
+      ${footer ? `<div class="modal-footer">${footer}</div>` : ''}
+    </div>`;
+  function close() { overlay.remove(); if (onClose) onClose(); }
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay || e.target.closest('[data-close]')) close();
+  });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+  root.appendChild(overlay);
+  if (onMount) onMount(overlay, close);
+  return { close, el: overlay };
+}
+
+function confirmModal({ title = 'Are you sure?', message = '', confirmText = 'Confirm', danger = false, onConfirm }) {
+  modal({
+    title,
+    size: 'modal-sm',
+    body: `<p style="margin:0; color:var(--text-dim);">${escapeHtml(message)}</p>`,
+    footer: `
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-confirm>${escapeHtml(confirmText)}</button>`,
+    onMount(overlay, close) {
+      overlay.querySelector('[data-confirm]').addEventListener('click', () => { close(); onConfirm && onConfirm(); });
+    }
+  });
+}
+
+/* ============================================================
+   APP SHELL — renders sidebar + topbar; views mount into .main-inner
+   ============================================================ */
+const NAV = [
+  { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { route: 'trades',    label: 'Trades',    icon: 'trades' },
+  { route: 'portfolio', label: 'Portfolio', icon: 'portfolio' },
+  { route: 'analytics', label: 'Analytics', icon: 'analytics' },
+  { route: 'watchlist', label: 'Watchlist', icon: 'watchlist' },
+  { route: 'journal',   label: 'Journal',   icon: 'journal' },
+  { route: 'settings',  label: 'Settings',  icon: 'settings' },
+];
+
+function renderShell() {
+  const s = Store.get();
+  document.documentElement.setAttribute('data-theme', s.meta.theme === 'light' ? 'light' : 'dark');
+  const stats = getStats();
+  const todayClass = stats.todayPL > 0 ? 'pos' : (stats.todayPL < 0 ? 'neg' : '');
+  document.getElementById('app').innerHTML = `
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">${ICONS.trades}</div>
+          <span>Trading Tracker</span>
+        </div>
+        <div class="nav-section">Workspace</div>
+        <nav class="nav">
+          ${NAV.map(n => `
+            <a class="nav-item" href="#/${n.route}" data-nav="${n.route}">
+              ${ICONS[n.icon]}<span>${n.label}</span>
+            </a>`).join('')}
+        </nav>
+      </aside>
+      <header class="topbar">
+        <div class="topbar-stats">
+          <div class="topbar-stat">
+            <span class="label">Portfolio</span>
+            <span class="value mono">${fmtMoney(stats.portfolioValue)}</span>
+          </div>
+          <div class="topbar-stat">
+            <span class="label">Today</span>
+            <span class="value mono ${todayClass}">${fmtMoney(stats.todayPL, { signed: true })}</span>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost btn-icon" data-action="install-app" title="Install app" hidden>
+            ${ICONS.download}
+          </button>
+          <button class="btn btn-ghost btn-icon" data-action="toggle-theme" title="Toggle theme">
+            ${s.meta.theme === 'light' ? ICONS.moon : ICONS.sun}
+          </button>
+          <button class="btn btn-primary" data-action="new-trade">
+            ${ICONS.plus}<span>New Trade</span>
+          </button>
+        </div>
+      </header>
+      <main class="main">
+        <div class="main-inner" id="view"></div>
+      </main>
+    </div>`;
+  // Active nav
+  const route = Router.getCurrent().replace(/^#\//, '').split('/')[0];
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    el.classList.toggle('active', el.dataset.nav === route);
+  });
+  // Wire actions
+  document.querySelector('[data-action="toggle-theme"]').addEventListener('click', () => {
+    Store.set(st => { st.meta.theme = st.meta.theme === 'light' ? 'dark' : 'light'; });
+    rerender();
+  });
+  document.querySelector('[data-action="new-trade"]').addEventListener('click', openTradeForm);
+
+  // PWA install button — visibility depends on platform + install state.
+  const installBtn = document.querySelector('[data-action="install-app"]');
+  if (installBtn) {
+    if (Platform.isStandalone) {
+      installBtn.hidden = true;
+    } else if (Platform.isIOSNonSafari) {
+      installBtn.hidden = false;
+      installBtn.title = 'Install (requires Safari)';
+    } else if (Platform.isIOSSafari) {
+      installBtn.hidden = false;
+      installBtn.title = 'Add to Home Screen';
+    } else if (deferredInstallPrompt) {
+      installBtn.hidden = false;
+      installBtn.title = 'Install app';
+    } else {
+      installBtn.hidden = true;
+    }
+    installBtn.addEventListener('click', handleInstallClick);
+  }
+}
+
+/* ============================================================
+   PWA — install click handler + iOS modals
+   ============================================================ */
+function handleInstallClick() {
+  if (Platform.isIOSNonSafari) {
+    showOpenInSafariModal();
+  } else if (Platform.isIOSSafari) {
+    showIOSAddToHomeModal();
+  } else if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.finally(() => {
+      deferredInstallPrompt = null;
+      const btn = document.querySelector('[data-action="install-app"]');
+      if (btn) btn.hidden = true;
+    });
+  }
+}
+
+function showOpenInSafariModal() {
+  modal({
+    title: 'Open in Safari to install',
+    size: 'modal-sm',
+    body: `
+      <p style="margin:0 0 14px;color:var(--text-dim);">
+        Installing this app on iPhone or iPad only works in Safari — Chrome, Firefox and other browsers on iOS don't support adding web apps to the home screen.
+      </p>
+      <ol style="margin:0 0 14px;padding-left:20px;color:var(--text-dim);line-height:1.7;">
+        <li>Tap <strong>Copy link</strong> below.</li>
+        <li>Open <strong>Safari</strong>.</li>
+        <li>Paste the link in the address bar and visit the page.</li>
+        <li>Tap the <strong>Share</strong> icon, then <strong>Add to Home Screen</strong>.</li>
+      </ol>
+      <div style="background:var(--bg-elev-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-family:var(--mono);font-size:12px;word-break:break-all;color:var(--text-dim);" data-current-url>${escapeHtml(location.href)}</div>
+    `,
+    footer: `
+      <button class="btn" data-close>Close</button>
+      <button class="btn btn-primary" data-copy-url>Copy link</button>
+    `,
+    onMount(overlay) {
+      overlay.querySelector('[data-copy-url]').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(location.href);
+          toast('Link copied. Now open Safari and paste it.', 'success');
+        } catch {
+          // Clipboard API blocked — select the URL text so the user can copy manually.
+          const range = document.createRange();
+          range.selectNode(overlay.querySelector('[data-current-url]'));
+          window.getSelection().removeAllRanges();
+          window.getSelection().addRange(range);
+          toast('Press Cmd+C / Ctrl+C to copy.', 'info');
+        }
+      });
+    }
+  });
+}
+
+function showIOSAddToHomeModal() {
+  modal({
+    title: 'Add to Home Screen',
+    size: 'modal-sm',
+    body: `
+      <p style="margin:0 0 14px;color:var(--text-dim);">
+        Install this app on your iPhone or iPad in two taps:
+      </p>
+      <ol style="margin:0;padding-left:20px;color:var(--text-dim);line-height:1.8;">
+        <li>Tap the <strong>Share</strong> icon at the bottom of Safari (square with an arrow pointing up).</li>
+        <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong> in the top right.</li>
+      </ol>
+    `,
+    footer: `<button class="btn btn-primary" data-close>Got it</button>`,
+  });
+}
+
+// Auto-shown once per session for iOS non-Safari users so they don't hit
+// a dead end wondering why install doesn't work.
+function maybeShowIOSChromeBanner() {
+  if (!Platform.isIOSNonSafari) return;
+  if (Platform.isStandalone) return;
+  if (sessionStorage.getItem('iosChromeBannerShown')) return;
+  sessionStorage.setItem('iosChromeBannerShown', '1');
+  // Small delay so it doesn't fire before the topbar has rendered.
+  setTimeout(showOpenInSafariModal, 800);
+}
+
+function rerender() {
+  renderShell();
+  const route = Router.getCurrent().replace(/^#\//, '').split('/')[0] || 'dashboard';
+  const fn = ROUTES[route] || ROUTES.dashboard;
+  fn();
+}
+
+/* ============================================================
+   ROUTES (defined later — placeholder map; views attached below)
+   ============================================================ */
+const ROUTES = {};
+
+function mountView(html) {
+  // Always re-render the shell so topbar stats and active nav stay in sync.
+  renderShell();
+  const view = document.getElementById('view');
+  if (view) view.innerHTML = html;
+}
+function setView(builder) {
+  // builder is a function that returns the html and optionally wires events after mount
+  renderShell();
+  const result = builder();
+  if (typeof result === 'string') {
+    mountView(result);
+  } else if (result && typeof result.html === 'string') {
+    mountView(result.html);
+    if (result.mount) result.mount();
+  }
+}
+
+/* ============================================================
+   BACKUP REMINDER BANNER
+   ============================================================ */
+function backupBanner() {
+  const s = Store.get();
+  if (!s.meta.onboarded) return '';
+  const snoozeUntil = s.meta.backupSnoozeUntil ? new Date(s.meta.backupSnoozeUntil) : null;
+  if (snoozeUntil && snoozeUntil > new Date()) return '';
+  const last = s.meta.lastBackup ? new Date(s.meta.lastBackup) : null;
+  const daysSince = last ? (Date.now() - last.getTime()) / (1000 * 60 * 60 * 24) : Infinity;
+  if (daysSince < 30) return '';
+  return `
+    <div class="banner" id="backup-banner">
+      ${ICONS.shield}
+      <span>It's been ${last ? Math.floor(daysSince) + ' days' : 'a while'} since your last backup. Your data lives only on this device.</span>
+      <div class="banner-actions">
+        <button class="btn btn-sm" data-banner="backup-now">Back up now</button>
+        <button class="btn btn-sm btn-ghost" data-banner="snooze">Remind me later</button>
+      </div>
+    </div>`;
+}
+function wireBackupBanner(scope = document) {
+  const banner = scope.querySelector('#backup-banner');
+  if (!banner) return;
+  banner.querySelector('[data-banner="backup-now"]').addEventListener('click', () => {
+    Store.exportJSON();
+    toast('Backup downloaded', 'success');
+    rerender();
+  });
+  banner.querySelector('[data-banner="snooze"]').addEventListener('click', () => {
+    Store.set(st => { st.meta.backupSnoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); });
+    rerender();
+  });
+}
+
+/* ============================================================
+   CHARTS — pure SVG. Each chart returns an HTML string.
+   ============================================================ */
+const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#ef4444', '#10b981', '#f97316'];
+
+function lineChart(points, opts = {}) {
+  // points: [{x, y, label?}]
+  const W = opts.width || 800;
+  const H = opts.height || 240;
+  const pad = { t: 16, r: 16, b: 28, l: 56 };
+  if (!points.length) return emptyChart(W, H, 'No data yet');
+  const xs = points.map(p => +new Date(p.x));
+  const ys = points.map(p => p.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const yPad = (yMax - yMin) * 0.1 || Math.abs(yMax) * 0.1 || 1;
+  const yLo = yMin - yPad, yHi = yMax + yPad;
+  const sx = x => pad.l + ((x - xMin) / (xMax - xMin || 1)) * (W - pad.l - pad.r);
+  const sy = y => H - pad.b - ((y - yLo) / (yHi - yLo || 1)) * (H - pad.t - pad.b);
+  const path = points.map((p, i) => (i ? 'L' : 'M') + sx(+new Date(p.x)) + ',' + sy(p.y)).join(' ');
+  const area = path + ` L${sx(xMax)},${H - pad.b} L${sx(xMin)},${H - pad.b} Z`;
+
+  const yTicks = 4;
+  const gridLines = Array.from({ length: yTicks + 1 }, (_, i) => {
+    const v = yLo + ((yHi - yLo) * i) / yTicks;
+    const y = sy(v);
+    return `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}"/>
+            <text x="${pad.l - 8}" y="${y + 4}" text-anchor="end">${fmtMoney(v, { decimals: 0 })}</text>`;
+  }).join('');
+  const xTicks = 5;
+  const xLabels = Array.from({ length: xTicks + 1 }, (_, i) => {
+    const v = xMin + ((xMax - xMin) * i) / xTicks;
+    return `<text x="${sx(v)}" y="${H - pad.b + 16}" text-anchor="middle">${fmtDate(new Date(v))}</text>`;
+  }).join('');
+
+  return `
+    <div class="chart-wrap">
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <g class="chart-grid">${gridLines}</g>
+        <g class="chart-axis">${xLabels}</g>
+        <path d="${area}" class="chart-area"/>
+        <path d="${path}" class="chart-line"/>
+      </svg>
+    </div>`;
+}
+
+function emptyChart(W, H, msg) {
+  return `<div class="chart-wrap" style="display:grid;place-items:center;height:${H}px;color:var(--text-faint);font-size:13px;">${escapeHtml(msg)}</div>`;
+}
+
+function barChart(items, opts = {}) {
+  // items: [{label, value, color?}]
+  const W = opts.width || 600;
+  const H = opts.height || 240;
+  const pad = { t: 16, r: 16, b: 50, l: 50 };
+  if (!items.length) return emptyChart(W, H, 'No data');
+  const max = Math.max(...items.map(i => Math.abs(i.value))) || 1;
+  const innerW = W - pad.l - pad.r;
+  const innerH = H - pad.t - pad.b;
+  const barW = innerW / items.length;
+
+  const hasNeg = items.some(i => i.value < 0);
+  const baseY = hasNeg ? pad.t + innerH / 2 : H - pad.b;
+  const scale = hasNeg ? innerH / 2 / max : innerH / max;
+
+  const bars = items.map((item, i) => {
+    const x = pad.l + i * barW + barW * 0.15;
+    const w = barW * 0.7;
+    const h = Math.abs(item.value) * scale;
+    const y = item.value >= 0 ? baseY - h : baseY;
+    const color = item.color || (item.value >= 0 ? 'var(--pos)' : 'var(--neg)');
+    return `
+      <g>
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" rx="3"/>
+        <text x="${x + w / 2}" y="${H - pad.b + 16}" text-anchor="middle" fill="var(--text-faint)" font-size="10">${escapeHtml(item.label)}</text>
+        <text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="var(--mono)">${opts.fmt ? opts.fmt(item.value) : fmtNum(item.value, 0)}</text>
+      </g>`;
+  }).join('');
+
+  const axisLine = `<line x1="${pad.l}" y1="${baseY}" x2="${W - pad.r}" y2="${baseY}" stroke="var(--border)"/>`;
+
+  return `
+    <div class="chart-wrap">
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        ${axisLine}
+        ${bars}
+      </svg>
+    </div>`;
+}
+
+function donutChart(items, opts = {}) {
+  // items: [{label, value}]
+  const W = opts.size || 220;
+  const H = W;
+  const cx = W / 2, cy = H / 2;
+  const r = W * 0.4;
+  const ir = r * 0.6;
+  const total = items.reduce((a, i) => a + Math.abs(i.value), 0);
+  if (!total) return emptyChart(W, H, 'No data');
+  let angle = -Math.PI / 2;
+  const arcs = items.map((item, i) => {
+    const slice = (Math.abs(item.value) / total) * Math.PI * 2;
+    const a1 = angle, a2 = angle + slice;
+    angle = a2;
+    const large = slice > Math.PI ? 1 : 0;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+    const xi1 = cx + ir * Math.cos(a1), yi1 = cy + ir * Math.sin(a1);
+    const xi2 = cx + ir * Math.cos(a2), yi2 = cy + ir * Math.sin(a2);
+    const path = `M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} L${xi2},${yi2} A${ir},${ir} 0 ${large} 0 ${xi1},${yi1} Z`;
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+    return `<path d="${path}" fill="${color}"/>`;
+  }).join('');
+  const center = opts.centerLabel ? `
+    <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-faint)" font-size="10">${escapeHtml(opts.centerLabel)}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="600" font-family="var(--mono)">${escapeHtml(opts.centerValue || '')}</text>` : '';
+  const legend = items.map((item, i) => `
+    <div class="item">
+      <span class="swatch" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></span>
+      <span>${escapeHtml(item.label)}</span>
+      <span class="mono muted">${((Math.abs(item.value) / total) * 100).toFixed(1)}%</span>
+    </div>`).join('');
+  return `
+    <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap; justify-content:center;">
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+        ${arcs}
+        ${center}
+      </svg>
+      <div class="donut-legend" style="flex:1; min-width:160px; flex-direction:column;">${legend}</div>
+    </div>`;
+}
+
+function heatmapCalendar(dailyPL, opts = {}) {
+  // dailyPL: { 'YYYY-MM-DD': value }
+  const today = new Date();
+  const months = 12;
+  const start = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
+  // Build a grid of cells
+  const days = [];
+  const cursor = new Date(start);
+  // backfill to Sunday
+  while (cursor.getDay() !== 0) cursor.setDate(cursor.getDate() - 1);
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  // forward to Saturday
+  while (end.getDay() !== 6) end.setDate(end.getDate() + 1);
+  while (cursor <= end) {
+    days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const maxAbs = Math.max(1, ...Object.values(dailyPL).map(v => Math.abs(v)));
+  const cells = days.map(d => {
+    const k = dayKey(d);
+    const v = dailyPL[k];
+    let bg = 'var(--bg-elev-2)';
+    if (v !== undefined && v !== 0) {
+      const intensity = Math.min(1, Math.abs(v) / maxAbs);
+      const a = 0.25 + intensity * 0.75;
+      bg = v > 0 ? `rgba(34,197,94,${a})` : `rgba(239,68,68,${a})`;
+    }
+    const inRange = d >= start && d <= new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const op = inRange ? 1 : 0.2;
+    const title = v !== undefined ? `${fmtDate(d)}: ${fmtMoney(v, { signed: true })}` : fmtDate(d);
+    return `<div class="heatmap-cell" style="background:${bg}; opacity:${op};" title="${escapeHtml(title)}"></div>`;
+  }).join('');
+  const cols = Math.ceil(days.length / 7);
+  return `
+    <div class="heatmap" style="grid-template-columns: repeat(${cols}, minmax(0,1fr)); grid-auto-flow: column; grid-template-rows: repeat(7, 1fr);">
+      ${cells}
+    </div>`;
+}
+
+function histogramChart(values, opts = {}) {
+  const W = opts.width || 600;
+  const H = opts.height || 220;
+  const pad = { t: 16, r: 16, b: 40, l: 40 };
+  if (!values.length) return emptyChart(W, H, 'No data');
+  // Bucket by R-multiple: -3, -2, -1, 0, 1, 2, 3+
+  const buckets = { '<-3R': 0, '-3R': 0, '-2R': 0, '-1R': 0, '0R': 0, '+1R': 0, '+2R': 0, '+3R': 0, '>+3R': 0 };
+  values.forEach(r => {
+    if (r < -3) buckets['<-3R']++;
+    else if (r < -2) buckets['-3R']++;
+    else if (r < -1) buckets['-2R']++;
+    else if (r < 0) buckets['-1R']++;
+    else if (r < 1) buckets['0R']++;
+    else if (r < 2) buckets['+1R']++;
+    else if (r < 3) buckets['+2R']++;
+    else if (r <= 3) buckets['+3R']++;
+    else buckets['>+3R']++;
+  });
+  const items = Object.entries(buckets).map(([k, v]) => ({
+    label: k, value: v,
+    color: k.startsWith('+') || k.startsWith('>+') ? 'var(--pos)' : (k.startsWith('-') || k.startsWith('<-') ? 'var(--neg)' : 'var(--text-faint)'),
+  }));
+  return barChart(items, { width: W, height: H, fmt: v => v });
+}
+
+/* ============================================================
+   ONBOARDING — multi-step intro shown until meta.onboarded
+   ============================================================ */
+function renderOnboarding() {
+  const root = document.getElementById('app');
+  let step = 1;
+  let currency = 'USD';
+  let firstAccount = { name: '', type: 'Broker', startingCapital: '' };
+
+  function draw() {
+    root.innerHTML = `
+      <div class="onboarding">
+        <div class="onboarding-card">
+          <div class="onboarding-step-indicator">
+            <div class="${step >= 1 ? 'active' : ''}"></div>
+            <div class="${step >= 2 ? 'active' : ''}"></div>
+            <div class="${step >= 3 ? 'active' : ''}"></div>
+          </div>
+          ${step === 1 ? stepWelcome() : step === 2 ? stepCurrency() : stepAccount()}
+        </div>
+      </div>`;
+    wire();
+  }
+
+  function stepWelcome() {
+    return `
+      <h1>Your trades, on your machine.</h1>
+      <p>A trading journal and portfolio tracker designed for privacy. No cloud, no account, no tracking — your data lives only in this browser.</p>
+      <div class="privacy-points">
+        <div class="privacy-point">${ICONS.check}<span>All data is stored locally on this device. We can't see it.</span></div>
+        <div class="privacy-point">${ICONS.check}<span>Works offline. No internet required after this first open.</span></div>
+        <div class="privacy-point">${ICONS.check}<span>Export a full backup any time. You own your data.</span></div>
+        <div class="privacy-point">${ICONS.check}<span>No analytics, no telemetry, no third-party scripts.</span></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn btn-ghost" data-action="skip">Skip setup</button>
+        <button class="btn btn-primary" data-action="next">Get started</button>
+      </div>`;
+  }
+  function stepCurrency() {
+    return `
+      <h1>Pick your currency.</h1>
+      <p>Used everywhere money is shown. You can change this later in Settings.</p>
+      <div class="field" style="margin-bottom: 26px;">
+        <label>Currency</label>
+        <select data-currency>
+          ${Object.entries(CURRENCIES).map(([k, v]) => `<option value="${k}" ${k === currency ? 'selected' : ''}>${k} — ${v.symbol}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <button class="btn" data-action="back">Back</button>
+        <button class="btn btn-primary" data-action="next">Continue</button>
+      </div>`;
+  }
+  function stepAccount() {
+    return `
+      <h1>Add your first account.</h1>
+      <p>An account is a place where your money lives — a broker, an exchange, a wallet. You can add more later.</p>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>Account name</label>
+          <input type="text" data-name placeholder="e.g. Interactive Brokers" value="${escapeHtml(firstAccount.name)}"/>
+        </div>
+        <div class="field">
+          <label>Type</label>
+          <select data-type>
+            <option ${firstAccount.type === 'Broker' ? 'selected' : ''}>Broker</option>
+            <option ${firstAccount.type === 'Crypto Exchange' ? 'selected' : ''}>Crypto Exchange</option>
+            <option ${firstAccount.type === 'Wallet' ? 'selected' : ''}>Wallet</option>
+            <option ${firstAccount.type === 'Bank' ? 'selected' : ''}>Bank</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Starting capital</label>
+          <input type="number" data-capital placeholder="0" step="0.01" value="${escapeHtml(firstAccount.startingCapital)}"/>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; gap:8px; margin-top:22px;">
+        <button class="btn" data-action="back">Back</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost" data-action="skip">Skip for now</button>
+          <button class="btn btn-primary" data-action="finish">Finish</button>
+        </div>
+      </div>`;
+  }
+
+  function wire() {
+    root.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const a = btn.dataset.action;
+        if (a === 'next') {
+          if (step === 2) { currency = root.querySelector('[data-currency]').value; }
+          step++; draw();
+        } else if (a === 'back') { step--; draw(); }
+        else if (a === 'skip') { finish(true); }
+        else if (a === 'finish') {
+          const name = root.querySelector('[data-name]').value.trim();
+          const cap = parseFloat(root.querySelector('[data-capital]').value) || 0;
+          const type = root.querySelector('[data-type]').value;
+          if (name) {
+            firstAccount = { name, type, startingCapital: cap };
+            finish(false);
+          } else {
+            finish(true);
+          }
+        }
+      });
+    });
+  }
+
+  function finish(skipAccount) {
+    Store.set(s => {
+      s.meta.onboarded = true;
+      s.meta.currency = currency;
+      if (!skipAccount && firstAccount.name) {
+        s.accounts.push({
+          id: uid(),
+          name: firstAccount.name,
+          type: firstAccount.type,
+          startingCapital: firstAccount.startingCapital,
+          defaultFeeType: 'flat',
+          defaultFeeValue: 0,
+          notes: '',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    });
+    // Install routing + shortcuts now that the user is past onboarding.
+    // Set the hash first so Router.init's initial handle() lands on the right view.
+    location.hash = '#/dashboard';
+    Router.init();
+    bindShortcuts();
+    maybeShowIOSChromeBanner();
+  }
+
+  draw();
+}
+
+/* ============================================================
+   DASHBOARD VIEW
+   ============================================================ */
+function viewDashboard() {
+  const s = Store.get();
+  const stats = getStats();
+  const closed = s.trades.filter(t => t.status === 'closed').sort((a, b) => new Date(b.exitDate) - new Date(a.exitDate));
+  const recent = [...s.trades].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 10);
+
+  // Asset allocation donut by asset type (uses cost basis of open positions)
+  const allocItems = (() => {
+    const byType = {};
+    s.trades.filter(t => t.status === 'open').forEach(t => {
+      const v = tradeCurrentValue(t) ?? Number(t.entryPrice) * Number(t.quantity);
+      byType[t.assetType] = (byType[t.assetType] || 0) + v;
+    });
+    if (stats.cash > 0) byType['Cash'] = stats.cash;
+    return Object.entries(byType).map(([label, value]) => ({ label, value }));
+  })();
+
+  const allTimeClass = stats.allTimePL > 0 ? 'pos' : (stats.allTimePL < 0 ? 'neg' : '');
+  const todayClass = stats.todayPL > 0 ? 'pos' : (stats.todayPL < 0 ? 'neg' : '');
+
+  // Goals
+  const goalCards = (() => {
+    const g = s.goals;
+    if (!g.annualReturnPct && !g.monthlyContribution && !(g.milestones && g.milestones.length)) return '';
+    const startYear = new Date().getFullYear();
+    const ytdClosed = closed.filter(t => new Date(t.exitDate).getFullYear() === startYear);
+    const ytdPL = ytdClosed.reduce((a, t) => a + tradeNetPL(t), 0);
+    const ytdPct = stats.startingCapital > 0 ? (ytdPL / stats.startingCapital) * 100 : 0;
+    let html = '<div class="card" style="margin-top:16px"><h3 class="card-title">Goals</h3><div class="grid grid-3" style="gap:12px;">';
+    if (g.annualReturnPct) {
+      const pct = clamp((ytdPct / g.annualReturnPct) * 100, 0, 100);
+      html += `<div>
+        <div class="muted" style="font-size:12px;">Annual return target</div>
+        <div class="mono" style="font-weight:600">${fmtPct(ytdPct, { signed: true })} / ${fmtPct(g.annualReturnPct)}</div>
+        <div style="height:6px;background:var(--bg-elev-2);border-radius:3px;margin-top:6px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
+        </div></div>`;
+    }
+    (g.milestones || []).forEach(m => {
+      const pct = clamp((stats.portfolioValue / m.value) * 100, 0, 100);
+      html += `<div>
+        <div class="muted" style="font-size:12px;">${escapeHtml(m.label || 'Milestone')}</div>
+        <div class="mono" style="font-weight:600">${fmtMoney(stats.portfolioValue)} / ${fmtMoney(m.value)}</div>
+        <div style="height:6px;background:var(--bg-elev-2);border-radius:3px;margin-top:6px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
+        </div></div>`;
+    });
+    html += '</div></div>';
+    return html;
+  })();
+
+  const html = `
+    ${backupBanner()}
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">${s.accounts.length} ${s.accounts.length === 1 ? 'account' : 'accounts'} · ${s.trades.length} trades</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn" data-action="update-prices">${ICONS.refresh}<span>Update prices</span></button>
+        <button class="btn btn-primary" data-action="new-trade-dash">${ICONS.plus}<span>New trade</span></button>
+      </div>
+    </div>
+
+    <div class="grid grid-4">
+      <div class="stat">
+        <span class="stat-label">Portfolio value</span>
+        <span class="stat-value">${fmtMoney(stats.portfolioValue)}</span>
+        <span class="stat-sub ${todayClass}">${fmtMoney(stats.todayPL, { signed: true })} today (${fmtPct(stats.todayPLPct, { signed: true })})</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">All-time P&amp;L</span>
+        <span class="stat-value ${allTimeClass}">${fmtMoney(stats.allTimePL, { signed: true })}</span>
+        <span class="stat-sub ${allTimeClass}">${fmtPct(stats.allTimePLPct, { signed: true })}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Win rate</span>
+        <span class="stat-value">${fmtPct(stats.winRate)}</span>
+        <span class="stat-sub">${stats.wins} wins · ${stats.losses} losses</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Profit factor</span>
+        <span class="stat-value">${stats.profitFactor === Infinity ? '∞' : fmtNum(stats.profitFactor, 2)}</span>
+        <span class="stat-sub">Expectancy ${fmtMoney(stats.expectancy)}</span>
+      </div>
+    </div>
+
+    <div class="grid grid-12" style="margin-top:16px;">
+      <div class="card span-8">
+        <h3 class="card-title">Equity curve</h3>
+        ${lineChart(equityCurve().map(p => ({ x: p.date, y: p.value })), { height: 260 })}
+      </div>
+      <div class="card span-4">
+        <h3 class="card-title">Allocation</h3>
+        ${donutChart(allocItems, { size: 200, centerLabel: 'Total', centerValue: fmtMoney(stats.portfolioValue, { decimals: 0 }) })}
+      </div>
+    </div>
+
+    ${goalCards}
+
+    <div class="grid grid-12" style="margin-top:16px;">
+      <div class="card span-8">
+        <h3 class="card-title">Recent trades</h3>
+        ${recent.length === 0 ? `
+          <div class="empty">
+            <div class="empty-icon">${ICONS.trades}</div>
+            <h3 class="empty-title">No trades yet</h3>
+            <p class="empty-text">Log your first trade to start tracking your performance.</p>
+            <button class="btn btn-primary" data-action="new-trade-dash">${ICONS.plus}<span>Add a trade</span></button>
+          </div>
+        ` : tradesTable(recent, { compact: true })}
+      </div>
+      <div class="card span-4">
+        <h3 class="card-title">Quick stats</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card-row"><span class="muted">Best trade</span><span class="mono pos">${stats.bestTrade ? fmtMoney(tradeNetPL(stats.bestTrade), { signed: true }) : '—'}</span></div>
+          <div class="card-row"><span class="muted">Worst trade</span><span class="mono neg">${stats.worstTrade ? fmtMoney(tradeNetPL(stats.worstTrade), { signed: true }) : '—'}</span></div>
+          <div class="card-row"><span class="muted">Avg win</span><span class="mono pos">${fmtMoney(stats.avgWin)}</span></div>
+          <div class="card-row"><span class="muted">Avg loss</span><span class="mono neg">${fmtMoney(-stats.avgLoss)}</span></div>
+          <div class="card-row"><span class="muted">Longest win streak</span><span class="mono">${stats.longestWin}</span></div>
+          <div class="card-row"><span class="muted">Current streak</span><span class="mono">${stats.currentStreak} ${stats.currentStreakKind ? (stats.currentStreakKind === 'win' ? 'W' : 'L') : ''}</span></div>
+          <div class="card-row"><span class="muted">Max drawdown</span><span class="mono neg">${fmtMoney(-stats.maxDD)}</span></div>
+          <div class="card-row"><span class="muted">Cash</span><span class="mono">${fmtMoney(stats.cash)}</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  mountView(html);
+  wireBackupBanner();
+  document.querySelectorAll('[data-action="new-trade-dash"]').forEach(b => b.addEventListener('click', openTradeForm));
+  document.querySelectorAll('[data-action="update-prices"]').forEach(b => b.addEventListener('click', openPriceUpdate));
+  wireTradesTable();
+}
+
+/* ============================================================
+   TRADES TABLE — shared rendering for dashboard + trades view
+   ============================================================ */
+function tradesTable(trades, opts = {}) {
+  if (!trades.length) return '<div class="muted" style="padding:24px;text-align:center;">No trades to show.</div>';
+  const accounts = Store.get().accounts;
+  const accName = id => (accounts.find(a => a.id === id) || {}).name || '—';
+  const rows = trades.map(t => {
+    const pl = t.status === 'closed' ? tradeNetPL(t) : tradeUnrealized(t);
+    const plPct = t.status === 'closed' ? tradePLPct(t) : null;
+    const r = tradeRMultiple(t);
+    const plClass = pl == null ? 'muted' : (pl > 0 ? 'pos' : (pl < 0 ? 'neg' : ''));
+    return `
+      <tr class="clickable" data-trade-id="${t.id}">
+        <td data-label="Date">${fmtDate(t.entryDate)}</td>
+        <td data-label="Ticker"><strong>${escapeHtml(t.ticker)}</strong> <span class="tag">${escapeHtml(t.assetType)}</span></td>
+        <td data-label="Side"><span class="pill pill-${t.side === 'Buy' || t.side === 'Cover' ? 'buy' : 'sell'}">${escapeHtml(t.side)}</span></td>
+        <td data-label="Qty" class="num">${fmtNum(t.quantity, t.assetType === 'Crypto' ? 4 : 2)}</td>
+        <td data-label="Entry" class="num">${fmtMoney(t.entryPrice, { decimals: 2 })}</td>
+        ${opts.compact ? '' : `<td data-label="Exit" class="num">${t.status === 'closed' ? fmtMoney(t.exitPrice, { decimals: 2 }) : '<span class="muted">—</span>'}</td>`}
+        <td data-label="P&amp;L" class="num ${plClass}">${pl == null ? '<span class="muted">—</span>' : fmtMoney(pl, { signed: true })}</td>
+        ${opts.compact ? '' : `<td data-label="P&amp;L %" class="num ${plClass}">${plPct == null ? '—' : fmtPct(plPct, { signed: true })}</td>`}
+        ${opts.compact ? '' : `<td data-label="R" class="num">${r == null ? '—' : fmtNum(r, 2) + 'R'}</td>`}
+        <td data-label="Status"><span class="pill pill-${t.status}">${t.status}</span></td>
+        ${opts.compact ? '' : `<td data-label="Account" class="muted">${escapeHtml(accName(t.accountId))}</td>`}
+      </tr>`;
+  }).join('');
+  return `
+    <div class="table-wrap">
+      <table class="table-mobile-cards">
+        <thead>
+          <tr>
+            <th>Date</th><th>Ticker</th><th>Side</th><th>Qty</th><th>Entry</th>
+            ${opts.compact ? '' : '<th>Exit</th>'}
+            <th>P&amp;L</th>
+            ${opts.compact ? '' : '<th>P&amp;L %</th><th>R</th>'}
+            <th>Status</th>
+            ${opts.compact ? '' : '<th>Account</th>'}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+function wireTradesTable(scope = document) {
+  scope.querySelectorAll('tr[data-trade-id]').forEach(tr => {
+    tr.addEventListener('click', () => openTradeDetail(tr.dataset.tradeId));
+  });
+}
+
+/* ============================================================
+   TRADES VIEW
+   ============================================================ */
+const tradesState = {
+  tab: 'all',
+  sort: { key: 'entryDate', dir: 'desc' },
+  filters: { account: '', assetType: '', strategy: '', winLoss: '', dateFrom: '', dateTo: '', search: '' },
+  page: 1,
+  pageSize: 50,
+};
+
+function viewTrades() {
+  const s = Store.get();
+  let trades = [...s.trades];
+  // Tab filter
+  if (tradesState.tab === 'open') trades = trades.filter(t => t.status === 'open');
+  else if (tradesState.tab === 'closed') trades = trades.filter(t => t.status === 'closed');
+  // Other filters
+  const f = tradesState.filters;
+  if (f.account) trades = trades.filter(t => t.accountId === f.account);
+  if (f.assetType) trades = trades.filter(t => t.assetType === f.assetType);
+  if (f.strategy) trades = trades.filter(t => t.strategy === f.strategy);
+  if (f.winLoss === 'win') trades = trades.filter(t => t.status === 'closed' && tradeNetPL(t) > 0);
+  if (f.winLoss === 'loss') trades = trades.filter(t => t.status === 'closed' && tradeNetPL(t) < 0);
+  if (f.dateFrom) trades = trades.filter(t => new Date(t.entryDate) >= new Date(f.dateFrom));
+  if (f.dateTo) trades = trades.filter(t => new Date(t.entryDate) <= new Date(f.dateTo + 'T23:59:59'));
+  if (f.search) {
+    const q = f.search.toLowerCase();
+    trades = trades.filter(t =>
+      t.ticker.toLowerCase().includes(q) ||
+      (t.preTradeNotes || '').toLowerCase().includes(q) ||
+      (t.postTradeNotes || '').toLowerCase().includes(q) ||
+      (t.tags || []).some(tag => tag.toLowerCase().includes(q))
+    );
+  }
+  // Sort
+  const { key, dir } = tradesState.sort;
+  trades.sort((a, b) => {
+    const av = sortValue(a, key); const bv = sortValue(b, key);
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  // Paginate
+  const total = trades.length;
+  const start = (tradesState.page - 1) * tradesState.pageSize;
+  const pageTrades = trades.slice(start, start + tradesState.pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / tradesState.pageSize));
+
+  const countOpen = s.trades.filter(t => t.status === 'open').length;
+  const countClosed = s.trades.filter(t => t.status === 'closed').length;
+
+  const html = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Trades</h1>
+        <p class="page-subtitle">${total} ${total === 1 ? 'trade' : 'trades'} shown</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" data-action="new-trade-page">${ICONS.plus}<span>New trade</span></button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab ${tradesState.tab === 'all' ? 'active' : ''}" data-tab="all">All (${s.trades.length})</button>
+      <button class="tab ${tradesState.tab === 'open' ? 'active' : ''}" data-tab="open">Open (${countOpen})</button>
+      <button class="tab ${tradesState.tab === 'closed' ? 'active' : ''}" data-tab="closed">Closed (${countClosed})</button>
+    </div>
+
+    <div class="filter-bar">
+      <input type="text" placeholder="Search ticker or notes…" data-f="search" value="${escapeHtml(f.search)}"/>
+      <select data-f="account">
+        <option value="">All accounts</option>
+        ${s.accounts.map(a => `<option value="${a.id}" ${f.account === a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
+      </select>
+      <select data-f="assetType">
+        <option value="">All asset types</option>
+        ${['Stock','ETF','Crypto','Option','Forex','Other'].map(t => `<option value="${t}" ${f.assetType === t ? 'selected' : ''}>${t}</option>`).join('')}
+      </select>
+      <select data-f="strategy">
+        <option value="">All strategies</option>
+        ${s.customTags.strategy.map(t => `<option value="${t}" ${f.strategy === t ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+      </select>
+      <select data-f="winLoss">
+        <option value="">Win/Loss</option>
+        <option value="win" ${f.winLoss === 'win' ? 'selected' : ''}>Wins</option>
+        <option value="loss" ${f.winLoss === 'loss' ? 'selected' : ''}>Losses</option>
+      </select>
+      <input type="date" data-f="dateFrom" value="${escapeHtml(f.dateFrom)}" title="From"/>
+      <input type="date" data-f="dateTo" value="${escapeHtml(f.dateTo)}" title="To"/>
+      <button class="btn btn-ghost btn-sm" data-action="clear-filters">Clear</button>
+    </div>
+
+    ${pageTrades.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">${ICONS.trades}</div>
+        <h3 class="empty-title">${s.trades.length === 0 ? 'No trades yet' : 'No trades match'}</h3>
+        <p class="empty-text">${s.trades.length === 0 ? 'Log your first trade to start tracking.' : 'Adjust your filters or clear them to see more.'}</p>
+        ${s.trades.length === 0 ? `<button class="btn btn-primary" data-action="new-trade-page">${ICONS.plus}<span>Add a trade</span></button>` : ''}
+      </div>
+    ` : `
+      <div class="table-wrap">
+        <table class="table-mobile-cards">
+          <thead>
+            <tr>
+              ${sortableTh('entryDate', 'Date')}
+              ${sortableTh('ticker', 'Ticker')}
+              ${sortableTh('side', 'Side')}
+              ${sortableTh('quantity', 'Qty')}
+              ${sortableTh('entryPrice', 'Entry')}
+              ${sortableTh('exitPrice', 'Exit')}
+              ${sortableTh('pl', 'P&L')}
+              ${sortableTh('plPct', 'P&L %')}
+              ${sortableTh('rMultiple', 'R')}
+              ${sortableTh('holdMs', 'Hold')}
+              ${sortableTh('status', 'Status')}
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageTrades.map(t => tradeRow(t)).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${totalPages > 1 ? `
+        <div style="display:flex;justify-content:center;gap:8px;align-items:center;margin-top:14px;">
+          <button class="btn btn-sm" ${tradesState.page <= 1 ? 'disabled' : ''} data-action="prev-page">Prev</button>
+          <span class="muted">Page ${tradesState.page} of ${totalPages}</span>
+          <button class="btn btn-sm" ${tradesState.page >= totalPages ? 'disabled' : ''} data-action="next-page">Next</button>
+        </div>` : ''}
+    `}
+  `;
+
+  mountView(html);
+
+  document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    tradesState.tab = b.dataset.tab; tradesState.page = 1; viewTrades();
+  }));
+  document.querySelectorAll('[data-f]').forEach(el => {
+    const handler = () => { tradesState.filters[el.dataset.f] = el.value; tradesState.page = 1; viewTrades(); };
+    el.addEventListener('change', handler);
+    if (el.type === 'text') el.addEventListener('input', debounce(handler, 200));
+  });
+  document.querySelectorAll('[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (tradesState.sort.key === k) tradesState.sort.dir = tradesState.sort.dir === 'asc' ? 'desc' : 'asc';
+    else tradesState.sort = { key: k, dir: 'desc' };
+    viewTrades();
+  }));
+  document.querySelectorAll('[data-action="new-trade-page"]').forEach(b => b.addEventListener('click', openTradeForm));
+  const clear = document.querySelector('[data-action="clear-filters"]');
+  if (clear) clear.addEventListener('click', () => {
+    tradesState.filters = { account: '', assetType: '', strategy: '', winLoss: '', dateFrom: '', dateTo: '', search: '' };
+    tradesState.page = 1; viewTrades();
+  });
+  const prev = document.querySelector('[data-action="prev-page"]'); if (prev) prev.addEventListener('click', () => { tradesState.page--; viewTrades(); });
+  const next = document.querySelector('[data-action="next-page"]'); if (next) next.addEventListener('click', () => { tradesState.page++; viewTrades(); });
+  wireTradesTable();
+}
+
+function sortableTh(key, label) {
+  const active = tradesState.sort.key === key;
+  const arrow = active ? (tradesState.sort.dir === 'asc' ? '↑' : '↓') : '';
+  return `<th class="sortable" data-sort="${key}">${label}<span class="sort-arrow">${arrow}</span></th>`;
+}
+
+function sortValue(t, key) {
+  switch (key) {
+    case 'entryDate': return new Date(t.entryDate).getTime();
+    case 'exitDate': return t.exitDate ? new Date(t.exitDate).getTime() : 0;
+    case 'pl': return t.status === 'closed' ? tradeNetPL(t) : (tradeUnrealized(t) || 0);
+    case 'plPct': return t.status === 'closed' ? tradePLPct(t) : 0;
+    case 'rMultiple': return tradeRMultiple(t) || 0;
+    case 'holdMs': return tradeHoldMs(t);
+    case 'quantity': return Number(t.quantity) || 0;
+    case 'entryPrice': return Number(t.entryPrice) || 0;
+    case 'exitPrice': return Number(t.exitPrice) || 0;
+    default: return (t[key] || '').toString().toLowerCase();
+  }
+}
+
+function tradeRow(t) {
+  const pl = t.status === 'closed' ? tradeNetPL(t) : tradeUnrealized(t);
+  const plPct = t.status === 'closed' ? tradePLPct(t) : null;
+  const r = tradeRMultiple(t);
+  const plClass = pl == null ? 'muted' : (pl > 0 ? 'pos' : (pl < 0 ? 'neg' : ''));
+  const tags = (t.tags || []).slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join(' ');
+  return `
+    <tr class="clickable" data-trade-id="${t.id}">
+      <td data-label="Date">${fmtDate(t.entryDate)}</td>
+      <td data-label="Ticker"><strong>${escapeHtml(t.ticker)}</strong> <span class="tag">${escapeHtml(t.assetType)}</span></td>
+      <td data-label="Side"><span class="pill pill-${t.side === 'Buy' || t.side === 'Cover' ? 'buy' : 'sell'}">${escapeHtml(t.side)}</span></td>
+      <td data-label="Qty" class="num">${fmtNum(t.quantity, t.assetType === 'Crypto' ? 4 : 2)}</td>
+      <td data-label="Entry" class="num">${fmtMoney(t.entryPrice, { decimals: 2 })}</td>
+      <td data-label="Exit" class="num">${t.status === 'closed' ? fmtMoney(t.exitPrice, { decimals: 2 }) : '<span class="muted">—</span>'}</td>
+      <td data-label="P&amp;L" class="num ${plClass}">${pl == null ? '<span class="muted">—</span>' : fmtMoney(pl, { signed: true })}</td>
+      <td data-label="P&amp;L %" class="num ${plClass}">${plPct == null ? '—' : fmtPct(plPct, { signed: true })}</td>
+      <td data-label="R" class="num">${r == null ? '—' : fmtNum(r, 2) + 'R'}</td>
+      <td data-label="Hold" class="num muted">${durationHuman(tradeHoldMs(t))}</td>
+      <td data-label="Status"><span class="pill pill-${t.status}">${t.status}</span></td>
+      <td data-label="Tags">${tags}</td>
+    </tr>`;
+}
+
+function debounce(fn, ms) {
+  let to; return (...args) => { clearTimeout(to); to = setTimeout(() => fn(...args), ms); };
+}
+
+/* ============================================================
+   TRADE FORM (new + edit)
+   ============================================================ */
+function openTradeForm(existingId = null) {
+  const s = Store.get();
+  if (s.accounts.length === 0) {
+    confirmModal({
+      title: 'Add an account first',
+      message: 'You need at least one account to record trades against. Open Settings → Accounts?',
+      confirmText: 'Open Settings',
+      onConfirm: () => Router.nav('#/settings'),
+    });
+    return;
+  }
+  const editing = existingId ? s.trades.find(t => t.id === existingId) : null;
+  let screenshotId = editing ? editing.screenshotId : null;
+  let screenshotPreview = null;
+  if (screenshotId) {
+    Screenshots.get(screenshotId).then(data => {
+      screenshotPreview = data;
+      const img = document.querySelector('[data-screenshot-preview]');
+      if (img && data) img.src = data;
+    });
+  }
+  const t = editing || {
+    accountId: s.accounts[0].id,
+    assetType: 'Stock',
+    side: 'Buy',
+    ticker: '',
+    quantity: '',
+    entryPrice: '',
+    entryDate: new Date().toISOString(),
+    entryFees: defaultFeeFor(s.accounts[0].id, 0, 0),
+    stopLoss: '',
+    takeProfit: '',
+    strategy: s.customTags.strategy[0] || '',
+    setupType: s.customTags.setup[0] || '',
+    preTradeNotes: '',
+    conviction: 3,
+    entryEmotion: 'Calm',
+    tags: [],
+  };
+  const allTags = Array.from(new Set(s.trades.flatMap(tr => tr.tags || []))).slice(0, 50);
+
+  const body = `
+    <form id="trade-form" novalidate>
+      ${s.checklist.required && s.checklist.items.some(i => i.enabled) ? `
+        <div class="card" style="margin-bottom:14px;background:var(--bg-elev-2);">
+          <h3 class="card-title">Pre-trade checklist</h3>
+          <div class="checklist">
+            ${s.checklist.items.filter(i => i.enabled).map(i => `
+              <label class="checklist-item">
+                <input type="checkbox" data-checklist="${i.id}"/>
+                <span>${escapeHtml(i.text)}</span>
+              </label>`).join('')}
+          </div>
+        </div>` : ''}
+      <div class="form-grid">
+        <div class="field">
+          <label>Account</label>
+          <select name="accountId">
+            ${s.accounts.map(a => `<option value="${a.id}" ${a.id === t.accountId ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Asset type</label>
+          <select name="assetType">
+            ${['Stock','ETF','Crypto','Option','Forex','Other'].map(x => `<option ${x === t.assetType ? 'selected' : ''}>${x}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Side</label>
+          <select name="side">
+            ${['Buy','Sell','Short','Cover'].map(x => `<option ${x === t.side ? 'selected' : ''}>${x}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Ticker</label>
+          <input type="text" name="ticker" placeholder="AAPL" value="${escapeHtml(t.ticker)}" required style="text-transform:uppercase"/>
+          <span class="error" data-error="ticker"></span>
+        </div>
+        <div class="field">
+          <label>Quantity</label>
+          <input type="number" name="quantity" step="any" min="0" placeholder="100" value="${escapeHtml(t.quantity)}" required/>
+          <span class="error" data-error="quantity"></span>
+        </div>
+        <div class="field">
+          <label>Entry price</label>
+          <input type="number" name="entryPrice" step="any" min="0" placeholder="0.00" value="${escapeHtml(t.entryPrice)}" required/>
+          <span class="error" data-error="entryPrice"></span>
+        </div>
+        <div class="field">
+          <label>Entry date/time</label>
+          <input type="datetime-local" name="entryDate" value="${localDateInput(t.entryDate)}"/>
+        </div>
+        <div class="field">
+          <label>Fees</label>
+          <input type="number" name="entryFees" step="any" min="0" value="${escapeHtml(t.entryFees)}"/>
+        </div>
+        <div class="field">
+          <label>Stop loss <span class="hint">optional</span></label>
+          <input type="number" name="stopLoss" step="any" min="0" value="${escapeHtml(t.stopLoss)}"/>
+        </div>
+        <div class="field">
+          <label>Take profit <span class="hint">optional</span></label>
+          <input type="number" name="takeProfit" step="any" min="0" value="${escapeHtml(t.takeProfit)}"/>
+        </div>
+        <div class="field field-full">
+          <label>Risk/Reward <span class="hint">auto-calculated</span></label>
+          <div class="mono" data-rr style="padding:9px 11px;background:var(--bg-elev-2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);">—</div>
+        </div>
+        <div class="field">
+          <label>Strategy</label>
+          <select name="strategy">
+            ${s.customTags.strategy.map(x => `<option ${x === t.strategy ? 'selected' : ''}>${escapeHtml(x)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Setup type</label>
+          <select name="setupType">
+            ${s.customTags.setup.map(x => `<option ${x === t.setupType ? 'selected' : ''}>${escapeHtml(x)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field field-full">
+          <label>Pre-trade thesis <span class="hint">max 500 chars</span></label>
+          <textarea name="preTradeNotes" maxlength="500" placeholder="What's the setup? What's your edge here?">${escapeHtml(t.preTradeNotes || '')}</textarea>
+        </div>
+        <div class="field">
+          <label>Conviction (1–5)</label>
+          <div class="range-wrap">
+            <input type="range" name="conviction" min="1" max="5" step="1" value="${t.conviction || 3}"/>
+            <span class="range-val mono" data-conv>${t.conviction || 3}</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Emotional state</label>
+          <select name="entryEmotion">
+            ${['Calm','Confident','FOMO','Uncertain','Revenge','Other'].map(x => `<option ${x === t.entryEmotion ? 'selected' : ''}>${x}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field field-full">
+          <label>Tags <span class="hint">comma-separated</span></label>
+          <input type="text" name="tags" placeholder="e.g. earnings, gap-up" value="${escapeHtml((t.tags || []).join(', '))}" list="tag-suggestions"/>
+          ${allTags.length ? `<datalist id="tag-suggestions">${allTags.map(tg => `<option value="${escapeHtml(tg)}">`).join('')}</datalist>` : ''}
+        </div>
+        <div class="field field-full">
+          <label>Screenshot <span class="hint">optional, max 2MB, resized to 1600px</span></label>
+          <input type="file" name="screenshot" accept="image/*"/>
+          <img data-screenshot-preview src="" style="display:${screenshotId ? 'block' : 'none'};max-width:240px;border-radius:6px;border:1px solid var(--border);margin-top:8px;" alt="preview"/>
+        </div>
+      </div>
+    </form>`;
+  const footer = `
+    <button class="btn" data-close>Cancel</button>
+    <button class="btn btn-primary" data-save>${editing ? 'Save changes' : 'Save trade'}</button>`;
+  modal({
+    title: editing ? 'Edit trade' : 'New trade',
+    body, footer, size: 'modal-lg',
+    onMount(overlay, close) {
+      const form = overlay.querySelector('#trade-form');
+      // R:R live calc
+      const updateRR = () => {
+        const entry = parseFloat(form.entryPrice.value);
+        const sl = parseFloat(form.stopLoss.value);
+        const tp = parseFloat(form.takeProfit.value);
+        const rrEl = overlay.querySelector('[data-rr]');
+        if (entry && sl && tp) {
+          const r = Math.abs(entry - sl), rw = Math.abs(tp - entry);
+          if (r > 0) rrEl.textContent = '1 : ' + (rw / r).toFixed(2);
+        } else rrEl.textContent = '—';
+      };
+      ['entryPrice', 'stopLoss', 'takeProfit'].forEach(n => form[n].addEventListener('input', updateRR));
+      updateRR();
+      // Conviction slider
+      form.conviction.addEventListener('input', () => overlay.querySelector('[data-conv]').textContent = form.conviction.value);
+      // Account → default fees
+      form.accountId.addEventListener('change', () => {
+        const acc = Store.get().accounts.find(a => a.id === form.accountId.value);
+        if (acc && !form.entryFees.value) form.entryFees.value = defaultFeeFor(acc.id, parseFloat(form.entryPrice.value) || 0, parseFloat(form.quantity.value) || 0);
+      });
+      // Uppercase ticker
+      form.ticker.addEventListener('input', () => { form.ticker.value = form.ticker.value.toUpperCase(); });
+      // Screenshot
+      let newScreenshotData = null;
+      form.screenshot.addEventListener('change', async e => {
+        const file = e.target.files[0]; if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { toast('Image too large (max 2 MB)', 'error'); form.screenshot.value = ''; return; }
+        try {
+          const resized = await resizeImage(file, 1600);
+          newScreenshotData = resized;
+          const img = overlay.querySelector('[data-screenshot-preview]');
+          img.src = resized; img.style.display = 'block';
+        } catch (err) { toast('Could not read image', 'error'); }
+      });
+      // Save
+      overlay.querySelector('[data-save]').addEventListener('click', async () => {
+        // Validate
+        let ok = true;
+        const errs = { ticker: '', quantity: '', entryPrice: '' };
+        if (!form.ticker.value.trim()) { errs.ticker = 'Required'; ok = false; }
+        const qty = parseFloat(form.quantity.value);
+        if (!(qty > 0)) { errs.quantity = 'Must be > 0'; ok = false; }
+        const ep = parseFloat(form.entryPrice.value);
+        if (!(ep > 0)) { errs.entryPrice = 'Must be > 0'; ok = false; }
+        // Checklist required
+        if (s.checklist.required) {
+          const required = overlay.querySelectorAll('[data-checklist]');
+          if (Array.from(required).some(c => !c.checked)) {
+            toast('Complete the pre-trade checklist', 'error'); ok = false;
+          }
+        }
+        Object.entries(errs).forEach(([k, v]) => {
+          const el = overlay.querySelector(`[data-error="${k}"]`); if (el) el.textContent = v;
+          const inp = form[k]; if (inp) inp.classList.toggle('invalid', !!v);
+        });
+        if (!ok) return;
+
+        // Save screenshot if changed
+        if (newScreenshotData) {
+          screenshotId = screenshotId || uid();
+          await Screenshots.put(screenshotId, newScreenshotData);
+        }
+        const payload = {
+          accountId: form.accountId.value,
+          assetType: form.assetType.value,
+          side: form.side.value,
+          ticker: form.ticker.value.trim().toUpperCase(),
+          quantity: parseFloat(form.quantity.value),
+          entryPrice: parseFloat(form.entryPrice.value),
+          entryDate: form.entryDate.value ? new Date(form.entryDate.value).toISOString() : new Date().toISOString(),
+          entryFees: parseFloat(form.entryFees.value) || 0,
+          stopLoss: form.stopLoss.value ? parseFloat(form.stopLoss.value) : null,
+          takeProfit: form.takeProfit.value ? parseFloat(form.takeProfit.value) : null,
+          strategy: form.strategy.value,
+          setupType: form.setupType.value,
+          preTradeNotes: form.preTradeNotes.value.trim(),
+          conviction: parseInt(form.conviction.value, 10),
+          entryEmotion: form.entryEmotion.value,
+          tags: form.tags.value.split(',').map(x => x.trim()).filter(Boolean),
+          screenshotId,
+          updatedAt: new Date().toISOString(),
+        };
+        Store.set(st => {
+          if (editing) {
+            const idx = st.trades.findIndex(x => x.id === editing.id);
+            st.trades[idx] = Object.assign({}, st.trades[idx], payload);
+          } else {
+            st.trades.push(Object.assign({
+              id: uid(),
+              status: 'open',
+              exitPrice: null, exitDate: null, exitFees: 0,
+              exitReason: null, postTradeNotes: '', exitEmotion: null,
+              mistakes: [], followedPlan: null,
+              createdAt: new Date().toISOString(),
+            }, payload));
+          }
+        });
+        close();
+        toast(editing ? 'Trade updated' : 'Trade saved', 'success');
+        rerender();
+      });
+    }
+  });
+}
+
+function defaultFeeFor(accountId, price, qty) {
+  const acc = Store.get().accounts.find(a => a.id === accountId);
+  if (!acc) return 0;
+  if (acc.defaultFeeType === 'pct') return ((price * qty) || 0) * (Number(acc.defaultFeeValue) || 0) / 100;
+  return Number(acc.defaultFeeValue) || 0;
+}
+
+async function resizeImage(file, maxW) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * ratio), h = Math.round(img.height * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+   CLOSE TRADE
+   ============================================================ */
+function openCloseTrade(tradeId) {
+  const s = Store.get();
+  const t = s.trades.find(x => x.id === tradeId);
+  if (!t || t.status === 'closed') return;
+  const body = `
+    <form id="close-form" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label>Exit price</label>
+          <input type="number" name="exitPrice" step="any" min="0" required/>
+          <span class="error" data-error="exitPrice"></span>
+        </div>
+        <div class="field">
+          <label>Exit date/time</label>
+          <input type="datetime-local" name="exitDate" value="${localDateInput(new Date())}"/>
+        </div>
+        <div class="field">
+          <label>Exit fees</label>
+          <input type="number" name="exitFees" step="any" min="0" value="${defaultFeeFor(t.accountId, 0, t.quantity)}"/>
+        </div>
+        <div class="field">
+          <label>Exit reason</label>
+          <select name="exitReason">
+            <option>Target hit</option><option>Stop hit</option><option>Manual</option><option>Time-based</option><option>Thesis invalidated</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Emotional state at exit</label>
+          <select name="exitEmotion">
+            ${['Calm','Confident','FOMO','Uncertain','Revenge','Other'].map(x => `<option>${x}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Followed the plan?</label>
+          <select name="followedPlan"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option></select>
+        </div>
+        <div class="field field-full">
+          <label>Mistakes made <span class="hint">tap to toggle</span></label>
+          <div class="chips" data-mistakes>
+            ${s.customTags.mistake.map(m => `<span class="chip" data-mistake="${escapeHtml(m)}">${escapeHtml(m)}</span>`).join('')}
+          </div>
+        </div>
+        <div class="field field-full">
+          <label>Post-trade notes</label>
+          <textarea name="postTradeNotes" placeholder="What worked? What didn't?"></textarea>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px;background:var(--bg-elev-2);">
+        <div class="grid grid-3">
+          <div><div class="muted" style="font-size:11px;">P&amp;L</div><div class="mono" data-preview-pl style="font-weight:600;font-size:16px;">—</div></div>
+          <div><div class="muted" style="font-size:11px;">P&amp;L %</div><div class="mono" data-preview-plpct style="font-weight:600;font-size:16px;">—</div></div>
+          <div><div class="muted" style="font-size:11px;">R-multiple</div><div class="mono" data-preview-r style="font-weight:600;font-size:16px;">—</div></div>
+        </div>
+      </div>
+    </form>`;
+  const footer = `
+    <button class="btn" data-close>Cancel</button>
+    <button class="btn btn-primary" data-save>Close trade</button>`;
+  modal({
+    title: `Close ${t.ticker} (${t.quantity})`,
+    body, footer,
+    onMount(overlay, close) {
+      const form = overlay.querySelector('#close-form');
+      const chips = new Set();
+      overlay.querySelectorAll('[data-mistake]').forEach(c => {
+        c.addEventListener('click', () => {
+          if (chips.has(c.dataset.mistake)) { chips.delete(c.dataset.mistake); c.classList.remove('active'); }
+          else { chips.add(c.dataset.mistake); c.classList.add('active'); }
+        });
+      });
+      const updatePreview = () => {
+        const ep = parseFloat(form.exitPrice.value);
+        if (!ep) return;
+        const sim = Object.assign({}, t, { exitPrice: ep, exitFees: parseFloat(form.exitFees.value) || 0, status: 'closed' });
+        const pl = tradeNetPL(sim), plPct = tradePLPct(sim), r = tradeRMultiple(sim);
+        overlay.querySelector('[data-preview-pl]').innerHTML = `<span class="${pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(pl, { signed: true })}</span>`;
+        overlay.querySelector('[data-preview-plpct]').innerHTML = `<span class="${pl >= 0 ? 'pos' : 'neg'}">${fmtPct(plPct, { signed: true })}</span>`;
+        overlay.querySelector('[data-preview-r]').innerHTML = r == null ? '<span class="muted">—</span>' : `<span class="${r >= 0 ? 'pos' : 'neg'}">${fmtNum(r, 2)}R</span>`;
+      };
+      ['exitPrice', 'exitFees'].forEach(n => form[n].addEventListener('input', updatePreview));
+      overlay.querySelector('[data-save]').addEventListener('click', () => {
+        const ep = parseFloat(form.exitPrice.value);
+        const errEl = overlay.querySelector('[data-error="exitPrice"]');
+        if (!(ep > 0)) { errEl.textContent = 'Must be > 0'; form.exitPrice.classList.add('invalid'); return; }
+        Store.set(st => {
+          const idx = st.trades.findIndex(x => x.id === t.id);
+          st.trades[idx] = Object.assign({}, st.trades[idx], {
+            exitPrice: ep,
+            exitDate: form.exitDate.value ? new Date(form.exitDate.value).toISOString() : new Date().toISOString(),
+            exitFees: parseFloat(form.exitFees.value) || 0,
+            exitReason: form.exitReason.value,
+            exitEmotion: form.exitEmotion.value,
+            followedPlan: form.followedPlan.value || null,
+            mistakes: Array.from(chips),
+            postTradeNotes: form.postTradeNotes.value.trim(),
+            status: 'closed',
+            updatedAt: new Date().toISOString(),
+          });
+        });
+        close();
+        toast('Trade closed', 'success');
+        rerender();
+      });
+    }
+  });
+}
+
+/* ============================================================
+   TRADE DETAIL
+   ============================================================ */
+function openTradeDetail(tradeId) {
+  const s = Store.get();
+  const t = s.trades.find(x => x.id === tradeId);
+  if (!t) return;
+  const acc = s.accounts.find(a => a.id === t.accountId);
+  const pl = t.status === 'closed' ? tradeNetPL(t) : tradeUnrealized(t);
+  const plPct = t.status === 'closed' ? tradePLPct(t) : null;
+  const r = tradeRMultiple(t);
+  const plClass = pl == null ? '' : (pl > 0 ? 'pos' : (pl < 0 ? 'neg' : ''));
+  const rr = tradeRR(t);
+
+  const body = `
+    <div class="detail-grid">
+      <div class="detail-field"><span class="label">Ticker</span><span class="value"><strong>${escapeHtml(t.ticker)}</strong> <span class="tag">${escapeHtml(t.assetType)}</span></span></div>
+      <div class="detail-field"><span class="label">Status</span><span class="value"><span class="pill pill-${t.status}">${t.status}</span></span></div>
+      <div class="detail-field"><span class="label">Side</span><span class="value"><span class="pill pill-${t.side === 'Buy' || t.side === 'Cover' ? 'buy' : 'sell'}">${escapeHtml(t.side)}</span></span></div>
+      <div class="detail-field"><span class="label">Account</span><span class="value">${escapeHtml(acc ? acc.name : '—')}</span></div>
+      <div class="detail-field"><span class="label">Quantity</span><span class="value mono">${fmtNum(t.quantity, t.assetType === 'Crypto' ? 4 : 2)}</span></div>
+      <div class="detail-field"><span class="label">Entry</span><span class="value mono">${fmtMoney(t.entryPrice)} @ ${fmtDate(t.entryDate, true)}</span></div>
+      ${t.status === 'closed' ? `
+        <div class="detail-field"><span class="label">Exit</span><span class="value mono">${fmtMoney(t.exitPrice)} @ ${fmtDate(t.exitDate, true)}</span></div>
+        <div class="detail-field"><span class="label">Hold</span><span class="value">${durationHuman(tradeHoldMs(t))}</span></div>
+        <div class="detail-field"><span class="label">P&amp;L</span><span class="value mono ${plClass}">${fmtMoney(pl, { signed: true })} (${fmtPct(plPct, { signed: true })})</span></div>
+        <div class="detail-field"><span class="label">R-multiple</span><span class="value mono">${r == null ? '—' : fmtNum(r, 2) + 'R'}</span></div>
+        <div class="detail-field"><span class="label">Exit reason</span><span class="value">${escapeHtml(t.exitReason || '—')}</span></div>
+        <div class="detail-field"><span class="label">Followed plan?</span><span class="value">${t.followedPlan ? (t.followedPlan === 'yes' ? 'Yes' : 'No') : '—'}</span></div>
+      ` : `
+        <div class="detail-field"><span class="label">Unrealized P&amp;L</span><span class="value mono ${plClass}">${pl == null ? '<span class="muted">—</span> (no price)' : fmtMoney(pl, { signed: true })}</span></div>
+        <div class="detail-field"><span class="label">Hold</span><span class="value">${durationHuman(tradeHoldMs(t))}</span></div>
+      `}
+      <div class="detail-field"><span class="label">Fees</span><span class="value mono">${fmtMoney(tradeFees(t))}</span></div>
+      <div class="detail-field"><span class="label">Stop / Target</span><span class="value mono">${t.stopLoss ? fmtMoney(t.stopLoss) : '—'} / ${t.takeProfit ? fmtMoney(t.takeProfit) : '—'}</span></div>
+      <div class="detail-field"><span class="label">Planned R:R</span><span class="value mono">${rr == null ? '—' : '1 : ' + fmtNum(rr, 2)}</span></div>
+      <div class="detail-field"><span class="label">Strategy</span><span class="value">${escapeHtml(t.strategy || '—')} · ${escapeHtml(t.setupType || '')}</span></div>
+      <div class="detail-field"><span class="label">Conviction</span><span class="value mono">${t.conviction || '—'} / 5</span></div>
+      <div class="detail-field"><span class="label">Entry emotion</span><span class="value">${escapeHtml(t.entryEmotion || '—')}</span></div>
+      ${t.exitEmotion ? `<div class="detail-field"><span class="label">Exit emotion</span><span class="value">${escapeHtml(t.exitEmotion)}</span></div>` : ''}
+    </div>
+    ${t.preTradeNotes ? `<div style="margin-top:16px;"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Pre-trade thesis</div><p style="margin:6px 0 0;">${escapeHtml(t.preTradeNotes)}</p></div>` : ''}
+    ${t.postTradeNotes ? `<div style="margin-top:16px;"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Post-trade notes</div><p style="margin:6px 0 0;">${escapeHtml(t.postTradeNotes)}</p></div>` : ''}
+    ${(t.tags && t.tags.length) ? `<div style="margin-top:14px;"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Tags</div>${t.tags.map(x => `<span class="tag" style="margin-right:4px;">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
+    ${(t.mistakes && t.mistakes.length) ? `<div style="margin-top:14px;"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Mistakes</div>${t.mistakes.map(x => `<span class="tag" style="margin-right:4px;background:var(--neg-soft);color:var(--neg);border-color:var(--neg);">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
+    <div data-screenshot-slot></div>
+  `;
+  const footer = `
+    ${t.status === 'open' ? `<button class="btn btn-primary" data-act="close-trade">Close trade</button>` : ''}
+    <button class="btn" data-act="edit-trade">${ICONS.edit}<span>Edit</span></button>
+    <button class="btn btn-danger" data-act="delete-trade">${ICONS.trash}<span>Delete</span></button>
+    <button class="btn" data-close style="margin-left:auto;">Done</button>
+  `;
+  modal({
+    title: 'Trade detail', body, footer, size: 'modal-lg',
+    onMount(overlay, close) {
+      if (t.screenshotId) {
+        Screenshots.get(t.screenshotId).then(data => {
+          if (data) overlay.querySelector('[data-screenshot-slot]').innerHTML = `
+            <div style="margin-top:16px;"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Screenshot</div>
+            <img class="detail-screenshot" src="${data}" alt="Trade screenshot"/></div>`;
+        });
+      }
+      const closeBtn = overlay.querySelector('[data-act="close-trade"]');
+      if (closeBtn) closeBtn.addEventListener('click', () => { close(); openCloseTrade(t.id); });
+      overlay.querySelector('[data-act="edit-trade"]').addEventListener('click', () => { close(); openTradeForm(t.id); });
+      overlay.querySelector('[data-act="delete-trade"]').addEventListener('click', () => {
+        confirmModal({
+          title: 'Delete trade?',
+          message: `This will permanently remove the ${t.ticker} trade and its screenshot.`,
+          confirmText: 'Delete', danger: true,
+          onConfirm: async () => {
+            if (t.screenshotId) await Screenshots.remove(t.screenshotId);
+            Store.set(st => { st.trades = st.trades.filter(x => x.id !== t.id); });
+            close();
+            toast('Trade deleted', 'success');
+            rerender();
+          }
+        });
+      });
+    }
+  });
+}
+
+/* ============================================================
+   BULK PRICE UPDATE
+   ============================================================ */
+function openPriceUpdate() {
+  const s = Store.get();
+  const openTrades = s.trades.filter(t => t.status === 'open');
+  const tickers = Array.from(new Set(openTrades.map(t => t.ticker)));
+  if (!tickers.length) { toast('No open positions to price', 'info'); return; }
+  const body = `
+    <p class="muted" style="margin-top:0;">Enter the latest price for each open position. Leave blank to skip.</p>
+    <div class="form-grid">
+      ${tickers.map(tk => `
+        <div class="field">
+          <label>${escapeHtml(tk)} <span class="hint">last: ${s.currentPrices[tk]?.price ? fmtMoney(s.currentPrices[tk].price) : '—'}</span></label>
+          <input type="number" step="any" min="0" data-ticker="${escapeHtml(tk)}" value="${s.currentPrices[tk]?.price || ''}" placeholder="0.00"/>
+        </div>`).join('')}
+    </div>`;
+  const footer = `
+    <button class="btn" data-close>Cancel</button>
+    <button class="btn btn-primary" data-save>Save prices</button>`;
+  modal({
+    title: 'Update prices', body, footer,
+    onMount(overlay, close) {
+      overlay.querySelector('[data-save]').addEventListener('click', () => {
+        Store.set(st => {
+          overlay.querySelectorAll('[data-ticker]').forEach(inp => {
+            const v = parseFloat(inp.value);
+            if (v > 0) st.currentPrices[inp.dataset.ticker] = { price: v, updatedAt: new Date().toISOString() };
+          });
+        });
+        close();
+        toast('Prices updated', 'success');
+        rerender();
+      });
+    }
+  });
+}
+
+/* ============================================================
+   PORTFOLIO VIEW
+   ============================================================ */
+function viewPortfolio() {
+  const s = Store.get();
+  const stats = getStats();
+  const open = s.trades.filter(t => t.status === 'open');
+
+  // Aggregate by ticker+account+side
+  const positions = open.map(t => {
+    const price = s.currentPrices[t.ticker]?.price;
+    const value = tradeCurrentValue(t) ?? (Number(t.entryPrice) * Number(t.quantity));
+    const unreal = tradeUnrealized(t);
+    const acc = s.accounts.find(a => a.id === t.accountId);
+    return { t, price, value, unreal, acc };
+  });
+  const totalOpenValue = positions.reduce((a, p) => a + p.value, 0);
+
+  // Allocation by type
+  const allocByType = (() => {
+    const m = {};
+    positions.forEach(p => { m[p.t.assetType] = (m[p.t.assetType] || 0) + p.value; });
+    if (stats.cash > 0) m['Cash'] = stats.cash;
+    return Object.entries(m).map(([label, value]) => ({ label, value }));
+  })();
+  // Allocation by account
+  const allocByAccount = (() => {
+    const m = {};
+    positions.forEach(p => {
+      const name = p.acc ? p.acc.name : 'Unknown';
+      m[name] = (m[name] || 0) + p.value;
+    });
+    return Object.entries(m).map(([label, value]) => ({ label, value }));
+  })();
+  // Cash per account
+  const cashByAccount = s.accounts.map(a => {
+    const realized = s.trades.filter(t => t.status === 'closed' && t.accountId === a.id).reduce((s2, t) => s2 + tradeNetPL(t), 0);
+    const openCost = s.trades.filter(t => t.status === 'open' && t.accountId === a.id).reduce((s2, t) => s2 + Number(t.entryPrice) * Number(t.quantity) + (Number(t.entryFees) || 0), 0);
+    const cash = (Number(a.startingCapital) || 0) + realized - openCost;
+    return { name: a.name, cash };
+  });
+
+  const html = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Portfolio</h1>
+        <p class="page-subtitle">${open.length} open ${open.length === 1 ? 'position' : 'positions'} · ${fmtMoney(stats.portfolioValue)} total</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn" data-action="update-prices">${ICONS.refresh}<span>Update prices</span></button>
+        <button class="btn btn-primary" data-action="new-trade-pf">${ICONS.plus}<span>New trade</span></button>
+      </div>
+    </div>
+
+    <div class="grid grid-4">
+      <div class="stat"><span class="stat-label">Portfolio value</span><span class="stat-value">${fmtMoney(stats.portfolioValue)}</span><span class="stat-sub muted">Cash + open</span></div>
+      <div class="stat"><span class="stat-label">Open value</span><span class="stat-value">${fmtMoney(stats.openValue)}</span><span class="stat-sub muted">${open.length} positions</span></div>
+      <div class="stat"><span class="stat-label">Unrealized P&amp;L</span><span class="stat-value ${stats.openUnrealized > 0 ? 'pos' : stats.openUnrealized < 0 ? 'neg' : ''}">${fmtMoney(stats.openUnrealized, { signed: true })}</span></div>
+      <div class="stat"><span class="stat-label">Cash</span><span class="stat-value">${fmtMoney(stats.cash)}</span><span class="stat-sub muted">${s.accounts.length} accounts</span></div>
+    </div>
+
+    ${open.length === 0 ? `
+      <div class="card" style="margin-top:16px;">
+        <div class="empty">
+          <div class="empty-icon">${ICONS.portfolio}</div>
+          <h3 class="empty-title">No open positions</h3>
+          <p class="empty-text">Open trades will appear here with their current market value.</p>
+          <button class="btn btn-primary" data-action="new-trade-pf">${ICONS.plus}<span>Add a trade</span></button>
+        </div>
+      </div>
+    ` : `
+      <div class="card" style="margin-top:16px;">
+        <h3 class="card-title">Open positions</h3>
+        <div class="table-wrap">
+          <table class="table-mobile-cards">
+            <thead><tr>
+              <th>Ticker</th><th>Account</th><th>Type</th><th>Qty</th><th>Avg Cost</th>
+              <th>Price</th><th>Value</th><th>Unrealized</th><th>%</th><th>Weight</th><th>Days</th>
+            </tr></thead>
+            <tbody>
+              ${positions.map(p => {
+                const cost = Number(p.t.entryPrice) * Number(p.t.quantity);
+                const plClass = p.unreal == null ? 'muted' : (p.unreal > 0 ? 'pos' : p.unreal < 0 ? 'neg' : '');
+                const pct = p.unreal != null && cost > 0 ? (p.unreal / cost) * 100 : null;
+                const weight = totalOpenValue > 0 ? (p.value / totalOpenValue) * 100 : 0;
+                const days = Math.floor(tradeHoldMs(p.t) / (1000 * 60 * 60 * 24));
+                return `
+                  <tr class="clickable" data-trade-id="${p.t.id}">
+                    <td data-label="Ticker"><strong>${escapeHtml(p.t.ticker)}</strong></td>
+                    <td data-label="Account" class="muted">${escapeHtml(p.acc ? p.acc.name : '—')}</td>
+                    <td data-label="Type">${escapeHtml(p.t.assetType)}</td>
+                    <td data-label="Qty" class="num">${fmtNum(p.t.quantity, p.t.assetType === 'Crypto' ? 4 : 2)}</td>
+                    <td data-label="Avg Cost" class="num">${fmtMoney(p.t.entryPrice)}</td>
+                    <td data-label="Price" class="num">
+                      <input type="number" step="any" min="0" class="inline-price" data-ticker="${escapeHtml(p.t.ticker)}" value="${p.price || ''}" placeholder="—" style="padding:5px 8px;font-size:12.5px;width:90px;"/>
+                    </td>
+                    <td data-label="Value" class="num mono">${fmtMoney(p.value)}</td>
+                    <td data-label="Unrealized" class="num mono ${plClass}">${p.unreal == null ? '<span class="muted">—</span>' : fmtMoney(p.unreal, { signed: true })}</td>
+                    <td data-label="%" class="num mono ${plClass}">${pct == null ? '—' : fmtPct(pct, { signed: true })}</td>
+                    <td data-label="Weight" class="num mono muted">${fmtNum(weight, 1)}%</td>
+                    <td data-label="Days" class="num muted">${days}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-12" style="margin-top:16px;">
+        <div class="card span-6">
+          <h3 class="card-title">Allocation by asset type</h3>
+          ${donutChart(allocByType, { size: 200, centerLabel: 'Total', centerValue: fmtMoney(stats.portfolioValue, { decimals: 0 }) })}
+        </div>
+        <div class="card span-6">
+          <h3 class="card-title">Allocation by account</h3>
+          ${donutChart(allocByAccount, { size: 200, centerLabel: 'Open', centerValue: fmtMoney(totalOpenValue, { decimals: 0 }) })}
+        </div>
+      </div>
+    `}
+
+    <div class="card" style="margin-top:16px;">
+      <h3 class="card-title">Cash by account</h3>
+      ${s.accounts.length === 0 ? '<p class="muted">No accounts yet.</p>' : `
+        <div class="table-wrap">
+          <table class="table-mobile-cards">
+            <thead><tr><th>Account</th><th>Starting capital</th><th>Cash</th></tr></thead>
+            <tbody>
+              ${cashByAccount.map(a => `
+                <tr><td data-label="Account">${escapeHtml(a.name)}</td>
+                <td data-label="Starting" class="num">${fmtMoney(s.accounts.find(x => x.name === a.name)?.startingCapital || 0)}</td>
+                <td data-label="Cash" class="num mono">${fmtMoney(a.cash)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+    </div>
+  `;
+  mountView(html);
+  document.querySelectorAll('[data-action="update-prices"]').forEach(b => b.addEventListener('click', openPriceUpdate));
+  document.querySelectorAll('[data-action="new-trade-pf"]').forEach(b => b.addEventListener('click', openTradeForm));
+  document.querySelectorAll('.inline-price').forEach(inp => {
+    inp.addEventListener('click', e => e.stopPropagation());
+    inp.addEventListener('change', () => {
+      const v = parseFloat(inp.value);
+      Store.set(st => {
+        if (v > 0) st.currentPrices[inp.dataset.ticker] = { price: v, updatedAt: new Date().toISOString() };
+        else delete st.currentPrices[inp.dataset.ticker];
+      });
+      rerender();
+    });
+  });
+  wireTradesTable();
+}
+
+/* ============================================================
+   ANALYTICS VIEW
+   ============================================================ */
+function viewAnalytics() {
+  const s = Store.get();
+  const closed = s.trades.filter(t => t.status === 'closed');
+  if (closed.length === 0) {
+    mountView(`
+      <div class="page-header"><div><h1 class="page-title">Analytics</h1></div></div>
+      <div class="card">
+        <div class="empty">
+          <div class="empty-icon">${ICONS.analytics}</div>
+          <h3 class="empty-title">Analytics need data</h3>
+          <p class="empty-text">Close at least one trade to see breakdowns by strategy, setup, and more.</p>
+        </div>
+      </div>`);
+    return;
+  }
+
+  const winRateBy = (key) => {
+    const groups = {};
+    closed.forEach(t => {
+      const k = t[key] || 'Other';
+      groups[k] = groups[k] || { wins: 0, total: 0, pl: 0 };
+      groups[k].total++;
+      const pl = tradeNetPL(t);
+      groups[k].pl += pl;
+      if (pl > 0) groups[k].wins++;
+    });
+    return Object.entries(groups).map(([k, v]) => ({
+      label: k,
+      value: v.total ? (v.wins / v.total) * 100 : 0,
+      pl: v.pl,
+      total: v.total,
+    }));
+  };
+  const winByStrategy = winRateBy('strategy');
+  const winBySetup = winRateBy('setupType');
+  const winByAsset = winRateBy('assetType');
+
+  // R-multiples histogram
+  const rValues = closed.map(tradeRMultiple).filter(r => r != null);
+
+  // Day of week
+  const dayBuckets = [0,0,0,0,0,0,0].map(() => ({ pl: 0, count: 0 }));
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  closed.forEach(t => {
+    const d = new Date(t.exitDate).getDay();
+    dayBuckets[d].pl += tradeNetPL(t);
+    dayBuckets[d].count++;
+  });
+  const dayItems = dayBuckets.map((b, i) => ({ label: dayNames[i], value: b.pl }));
+
+  // Hold buckets
+  const holdBuckets = { '<1d': 0, '1–7d': 0, '1–4w': 0, '>1mo': 0 };
+  const holdCounts = { '<1d': 0, '1–7d': 0, '1–4w': 0, '>1mo': 0 };
+  closed.forEach(t => {
+    const days = tradeHoldMs(t) / (1000 * 60 * 60 * 24);
+    const pl = tradeNetPL(t);
+    const k = days < 1 ? '<1d' : days < 7 ? '1–7d' : days < 28 ? '1–4w' : '>1mo';
+    holdBuckets[k] += pl;
+    holdCounts[k]++;
+  });
+  const holdItems = Object.entries(holdBuckets).map(([k, v]) => ({ label: `${k} (${holdCounts[k]})`, value: v }));
+
+  // Average win vs avg loss
+  const wins = closed.filter(t => tradeNetPL(t) > 0);
+  const losses = closed.filter(t => tradeNetPL(t) < 0);
+  const avgWin = wins.length ? wins.reduce((a, t) => a + tradeNetPL(t), 0) / wins.length : 0;
+  const avgLoss = losses.length ? Math.abs(losses.reduce((a, t) => a + tradeNetPL(t), 0)) / losses.length : 0;
+  const wlItems = [
+    { label: `Avg win (${wins.length})`, value: avgWin, color: 'var(--pos)' },
+    { label: `Avg loss (${losses.length})`, value: avgLoss, color: 'var(--neg)' },
+  ];
+
+  // Monthly heatmap data
+  const dailyPL = {};
+  closed.forEach(t => {
+    const k = dayKey(t.exitDate);
+    dailyPL[k] = (dailyPL[k] || 0) + tradeNetPL(t);
+  });
+
+  // Mistakes
+  const mistakeCounts = {}; const mistakeCost = {};
+  closed.forEach(t => {
+    (t.mistakes || []).forEach(m => {
+      mistakeCounts[m] = (mistakeCounts[m] || 0) + 1;
+      const pl = tradeNetPL(t);
+      if (pl < 0) mistakeCost[m] = (mistakeCost[m] || 0) + pl;
+    });
+  });
+  const mistakeFreq = Object.entries(mistakeCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: k, value: v, color: 'var(--warn)' }));
+  const mistakeCostItems = Object.entries(mistakeCost).sort((a, b) => a[1] - b[1]).map(([k, v]) => ({ label: k, value: v }));
+
+  const stats = getStats();
+
+  const html = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Analytics</h1>
+        <p class="page-subtitle">${closed.length} closed trades · ${fmtPct(stats.winRate)} win rate</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn" data-action="print">${ICONS.print}<span>Print report</span></button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="card-title">Monthly P&amp;L heatmap (last 12 months)</h3>
+      ${heatmapCalendar(dailyPL)}
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:10px;font-size:11px;" class="muted">
+        <span>Loss</span>
+        <div style="display:flex;gap:2px;">
+          <div style="width:10px;height:10px;background:rgba(239,68,68,0.8);border-radius:2px;"></div>
+          <div style="width:10px;height:10px;background:rgba(239,68,68,0.4);border-radius:2px;"></div>
+          <div style="width:10px;height:10px;background:var(--bg-elev-2);border-radius:2px;"></div>
+          <div style="width:10px;height:10px;background:rgba(34,197,94,0.4);border-radius:2px;"></div>
+          <div style="width:10px;height:10px;background:rgba(34,197,94,0.8);border-radius:2px;"></div>
+        </div>
+        <span>Win</span>
+      </div>
+    </div>
+
+    <div class="grid grid-12">
+      <div class="card span-6">
+        <h3 class="card-title">Win rate by strategy</h3>
+        ${barChart(winByStrategy, { height: 220, fmt: v => v.toFixed(0) + '%' })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">Win rate by setup type</h3>
+        ${barChart(winBySetup, { height: 220, fmt: v => v.toFixed(0) + '%' })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">Win rate by asset type</h3>
+        ${barChart(winByAsset, { height: 220, fmt: v => v.toFixed(0) + '%' })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">R-multiple distribution</h3>
+        ${histogramChart(rValues, { height: 220 })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">P&amp;L by day of week</h3>
+        ${barChart(dayItems, { height: 220, fmt: v => fmtMoney(v, { decimals: 0 }) })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">P&amp;L by hold period</h3>
+        ${barChart(holdItems, { height: 220, fmt: v => fmtMoney(v, { decimals: 0 }) })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">Avg win vs avg loss</h3>
+        ${barChart(wlItems, { height: 220, fmt: v => fmtMoney(v, { decimals: 0 }) })}
+      </div>
+      <div class="card span-6">
+        <h3 class="card-title">Risk metrics</h3>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="card-row"><span class="muted">Max drawdown</span><span class="mono neg">${fmtMoney(-stats.maxDD)}</span></div>
+          <div class="card-row"><span class="muted">Profit factor</span><span class="mono">${stats.profitFactor === Infinity ? '∞' : fmtNum(stats.profitFactor, 2)}</span></div>
+          <div class="card-row"><span class="muted">Expectancy / trade</span><span class="mono ${stats.expectancy > 0 ? 'pos' : 'neg'}">${fmtMoney(stats.expectancy, { signed: true })}</span></div>
+          <div class="card-row"><span class="muted">Avg R</span><span class="mono">${rValues.length ? fmtNum(rValues.reduce((a, b) => a + b, 0) / rValues.length, 2) + 'R' : '—'}</span></div>
+          <div class="card-row"><span class="muted">Best trade</span><span class="mono pos">${stats.bestTrade ? fmtMoney(tradeNetPL(stats.bestTrade), { signed: true }) : '—'}</span></div>
+          <div class="card-row"><span class="muted">Worst trade</span><span class="mono neg">${stats.worstTrade ? fmtMoney(tradeNetPL(stats.worstTrade), { signed: true }) : '—'}</span></div>
+        </div>
+      </div>
+      ${mistakeFreq.length ? `
+        <div class="card span-6">
+          <h3 class="card-title">Mistake frequency</h3>
+          ${barChart(mistakeFreq, { height: 240, fmt: v => v })}
+        </div>
+        <div class="card span-6">
+          <h3 class="card-title">Cost of each mistake</h3>
+          ${barChart(mistakeCostItems, { height: 240, fmt: v => fmtMoney(v, { decimals: 0 }) })}
+        </div>` : ''}
+    </div>
+  `;
+  mountView(html);
+  document.querySelectorAll('[data-action="print"]').forEach(b => b.addEventListener('click', () => window.print()));
+}
+
+/* ============================================================
+   WATCHLIST VIEW
+   ============================================================ */
+const watchlistState = { activeId: null };
+
+function viewWatchlist() {
+  const s = Store.get();
+  if (!s.watchlists.length) {
+    Store.set(st => st.watchlists.push({ id: uid(), name: 'Main', items: [] }));
+  }
+  if (!watchlistState.activeId || !s.watchlists.find(w => w.id === watchlistState.activeId)) {
+    watchlistState.activeId = s.watchlists[0].id;
+  }
+  const active = s.watchlists.find(w => w.id === watchlistState.activeId);
+
+  const html = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Watchlist</h1>
+        <p class="page-subtitle">${active.items.length} ${active.items.length === 1 ? 'ticker' : 'tickers'}</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn" data-action="new-list">${ICONS.plus}<span>New list</span></button>
+        <button class="btn btn-primary" data-action="add-ticker">${ICONS.plus}<span>Add ticker</span></button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      ${s.watchlists.map(w => `
+        <button class="tab ${w.id === watchlistState.activeId ? 'active' : ''}" data-wl="${w.id}">
+          ${escapeHtml(w.name)}
+        </button>`).join('')}
+    </div>
+
+    ${active.items.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">${ICONS.watchlist}</div>
+        <h3 class="empty-title">Empty watchlist</h3>
+        <p class="empty-text">Track tickers you're considering, with target levels and catalysts.</p>
+        <button class="btn btn-primary" data-action="add-ticker">${ICONS.plus}<span>Add a ticker</span></button>
+      </div>
+    ` : `
+      <div class="table-wrap">
+        <table class="table-mobile-cards">
+          <thead><tr>
+            <th>Ticker</th><th>Target entry</th><th>Target exit</th>
+            <th>Catalyst</th><th>Event date</th><th>Notes</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${active.items.map((it, i) => `
+              <tr>
+                <td data-label="Ticker"><strong>${escapeHtml(it.ticker)}</strong></td>
+                <td data-label="Entry" class="num">${it.targetEntry ? fmtMoney(it.targetEntry) : '—'}</td>
+                <td data-label="Exit" class="num">${it.targetExit ? fmtMoney(it.targetExit) : '—'}</td>
+                <td data-label="Catalyst">${escapeHtml(it.catalyst || '—')}</td>
+                <td data-label="Date">${it.eventDate ? fmtDate(it.eventDate) : '—'}</td>
+                <td data-label="Notes" class="muted">${escapeHtml(it.notes || '')}</td>
+                <td data-label="" style="text-align:right;white-space:nowrap;">
+                  <button class="btn btn-sm btn-ghost" data-convert="${i}" title="Convert to trade">${ICONS.plus}</button>
+                  <button class="btn btn-sm btn-ghost" data-edit-wl="${i}">${ICONS.edit}</button>
+                  <button class="btn btn-sm btn-ghost" data-del-wl="${i}">${ICONS.trash}</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `}
+
+    ${s.watchlists.length > 1 ? `<div style="margin-top:14px;"><button class="btn btn-sm btn-ghost" data-action="rename-list">Rename list</button> <button class="btn btn-sm btn-ghost" data-action="delete-list">${ICONS.trash}<span>Delete list</span></button></div>` : ''}
+  `;
+  mountView(html);
+
+  document.querySelectorAll('[data-wl]').forEach(t => t.addEventListener('click', () => {
+    watchlistState.activeId = t.dataset.wl; viewWatchlist();
+  }));
+  document.querySelectorAll('[data-action="new-list"]').forEach(b => b.addEventListener('click', () => {
+    const name = prompt('Name this watchlist:');
+    if (!name) return;
+    const id = uid();
+    Store.set(st => st.watchlists.push({ id, name: name.trim(), items: [] }));
+    watchlistState.activeId = id;
+    viewWatchlist();
+  }));
+  document.querySelectorAll('[data-action="add-ticker"]').forEach(b => b.addEventListener('click', () => openWatchlistItem()));
+  document.querySelectorAll('[data-edit-wl]').forEach(b => b.addEventListener('click', () => openWatchlistItem(parseInt(b.dataset.editWl, 10))));
+  document.querySelectorAll('[data-del-wl]').forEach(b => b.addEventListener('click', () => {
+    const i = parseInt(b.dataset.delWl, 10);
+    Store.set(st => {
+      const w = st.watchlists.find(x => x.id === watchlistState.activeId);
+      w.items.splice(i, 1);
+    });
+    viewWatchlist();
+  }));
+  document.querySelectorAll('[data-convert]').forEach(b => b.addEventListener('click', () => {
+    const i = parseInt(b.dataset.convert, 10);
+    const item = active.items[i];
+    // Pre-fill trade form via a hidden draft
+    openTradeFormFromWatchlist(item);
+  }));
+  const renameBtn = document.querySelector('[data-action="rename-list"]');
+  if (renameBtn) renameBtn.addEventListener('click', () => {
+    const name = prompt('Rename list:', active.name);
+    if (!name) return;
+    Store.set(st => { st.watchlists.find(w => w.id === active.id).name = name.trim(); });
+    viewWatchlist();
+  });
+  const delBtn = document.querySelector('[data-action="delete-list"]');
+  if (delBtn) delBtn.addEventListener('click', () => {
+    confirmModal({
+      title: 'Delete watchlist?', message: 'This list and its items will be removed.', confirmText: 'Delete', danger: true,
+      onConfirm: () => {
+        Store.set(st => { st.watchlists = st.watchlists.filter(w => w.id !== active.id); });
+        watchlistState.activeId = null;
+        viewWatchlist();
+      }
+    });
+  });
+}
+
+function openWatchlistItem(index = null) {
+  const s = Store.get();
+  const wl = s.watchlists.find(w => w.id === watchlistState.activeId);
+  const item = index != null ? wl.items[index] : { ticker: '', targetEntry: '', targetExit: '', catalyst: '', eventDate: '', notes: '' };
+  const body = `
+    <form id="wl-form">
+      <div class="form-grid">
+        <div class="field"><label>Ticker</label><input name="ticker" required value="${escapeHtml(item.ticker)}" style="text-transform:uppercase"/></div>
+        <div class="field"><label>Catalyst</label><input name="catalyst" value="${escapeHtml(item.catalyst || '')}" placeholder="e.g. earnings, FDA decision"/></div>
+        <div class="field"><label>Target entry</label><input type="number" step="any" min="0" name="targetEntry" value="${escapeHtml(item.targetEntry || '')}"/></div>
+        <div class="field"><label>Target exit</label><input type="number" step="any" min="0" name="targetExit" value="${escapeHtml(item.targetExit || '')}"/></div>
+        <div class="field"><label>Event date</label><input type="date" name="eventDate" value="${item.eventDate ? dayKey(item.eventDate) : ''}"/></div>
+        <div class="field field-full"><label>Notes</label><textarea name="notes">${escapeHtml(item.notes || '')}</textarea></div>
+      </div>
+    </form>`;
+  const footer = `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" data-save>Save</button>`;
+  modal({
+    title: index != null ? 'Edit ticker' : 'Add ticker', body, footer,
+    onMount(overlay, close) {
+      const form = overlay.querySelector('#wl-form');
+      form.ticker.addEventListener('input', () => { form.ticker.value = form.ticker.value.toUpperCase(); });
+      overlay.querySelector('[data-save]').addEventListener('click', () => {
+        const tk = form.ticker.value.trim().toUpperCase();
+        if (!tk) { form.ticker.classList.add('invalid'); return; }
+        const newItem = {
+          ticker: tk,
+          targetEntry: form.targetEntry.value ? parseFloat(form.targetEntry.value) : null,
+          targetExit: form.targetExit.value ? parseFloat(form.targetExit.value) : null,
+          catalyst: form.catalyst.value.trim(),
+          eventDate: form.eventDate.value || null,
+          notes: form.notes.value.trim(),
+        };
+        Store.set(st => {
+          const w = st.watchlists.find(x => x.id === watchlistState.activeId);
+          if (index != null) w.items[index] = newItem; else w.items.push(newItem);
+        });
+        close(); viewWatchlist();
+      });
+    }
+  });
+}
+
+function openTradeFormFromWatchlist(item) {
+  // Open trade form, then pre-fill ticker + entry price after mount.
+  openTradeForm();
+  setTimeout(() => {
+    const form = document.querySelector('#trade-form');
+    if (!form) return;
+    form.ticker.value = item.ticker;
+    if (item.targetEntry) form.entryPrice.value = item.targetEntry;
+    if (item.targetExit) form.takeProfit.value = item.targetExit;
+    if (item.notes) form.preTradeNotes.value = item.notes;
+  }, 50);
+}
+
+/* ============================================================
+   JOURNAL VIEW
+   ============================================================ */
+const journalState = { mode: 'daily', date: dayKey(new Date()), search: '' };
+
+function viewJournal() {
+  const s = Store.get();
+  const html = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Journal</h1>
+        <p class="page-subtitle">Notes, weekly and monthly reviews</p>
+      </div>
+      <div class="page-actions">
+        <input type="search" placeholder="Search journal…" data-jsearch value="${escapeHtml(journalState.search)}" style="width:220px;"/>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab ${journalState.mode === 'daily' ? 'active' : ''}" data-jmode="daily">Daily</button>
+      <button class="tab ${journalState.mode === 'weekly' ? 'active' : ''}" data-jmode="weekly">Weekly review</button>
+      <button class="tab ${journalState.mode === 'monthly' ? 'active' : ''}" data-jmode="monthly">Monthly review</button>
+    </div>
+
+    ${journalState.search ? renderJournalSearch() : (
+      journalState.mode === 'daily' ? renderJournalDaily() :
+      journalState.mode === 'weekly' ? renderJournalWeekly() :
+      renderJournalMonthly()
+    )}
+  `;
+  mountView(html);
+
+  document.querySelectorAll('[data-jmode]').forEach(b => b.addEventListener('click', () => {
+    journalState.mode = b.dataset.jmode; viewJournal();
+  }));
+  const search = document.querySelector('[data-jsearch]');
+  if (search) search.addEventListener('input', debounce(e => { journalState.search = e.target.value; viewJournal(); }, 200));
+
+  wireJournalEditors();
+}
+
+function renderJournalDaily() {
+  const s = Store.get();
+  const key = journalState.date;
+  const text = s.journal.daily[key] || '';
+  return `
+    <div class="card">
+      <div class="card-row" style="margin-bottom:12px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm" data-jnav="-1">‹ Prev day</button>
+          <input type="date" data-jdate value="${key}" style="width:auto;"/>
+          <button class="btn btn-sm" data-jnav="1">Next day ›</button>
+        </div>
+        <div class="muted">${fmtDate(key)}</div>
+      </div>
+      <textarea data-jdaily style="min-height:280px;" placeholder="How did the day go? What did you notice in your behavior? What's the plan for tomorrow?">${escapeHtml(text)}</textarea>
+      <div class="muted" style="font-size:11px;margin-top:8px;">Saves automatically.</div>
+    </div>`;
+}
+
+function renderJournalWeekly() {
+  const wk = weekKey(new Date(journalState.date));
+  const s = Store.get();
+  const data = s.journal.weekly[wk] || { worked: '', didntWork: '', lesson: '', adjustment: '' };
+  return `
+    <div class="card">
+      <div class="card-row" style="margin-bottom:12px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm" data-jnav="-7">‹ Prev week</button>
+          <input type="date" data-jdate value="${journalState.date}" style="width:auto;"/>
+          <button class="btn btn-sm" data-jnav="7">Next week ›</button>
+        </div>
+        <div class="muted">Week ${wk}</div>
+      </div>
+      <div class="form-grid">
+        <div class="field field-full"><label>What worked?</label><textarea data-jweekly="worked">${escapeHtml(data.worked)}</textarea></div>
+        <div class="field field-full"><label>What didn't?</label><textarea data-jweekly="didntWork">${escapeHtml(data.didntWork)}</textarea></div>
+        <div class="field field-full"><label>Biggest lesson</label><textarea data-jweekly="lesson">${escapeHtml(data.lesson)}</textarea></div>
+        <div class="field field-full"><label>Adjustment for next week</label><textarea data-jweekly="adjustment">${escapeHtml(data.adjustment)}</textarea></div>
+      </div>
+    </div>`;
+}
+
+function renderJournalMonthly() {
+  const s = Store.get();
+  const mk = monthKey(new Date(journalState.date));
+  const data = s.journal.monthly[mk] || { reflection: '', goalForNext: '' };
+  const month = new Date(journalState.date);
+  const start = new Date(month.getFullYear(), month.getMonth(), 1);
+  const end = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  const closed = s.trades.filter(t => t.status === 'closed' && new Date(t.exitDate) >= start && new Date(t.exitDate) <= end);
+  const pl = closed.reduce((a, t) => a + tradeNetPL(t), 0);
+  const wins = closed.filter(t => tradeNetPL(t) > 0).length;
+  const wr = closed.length ? (wins / closed.length) * 100 : 0;
+  const best = closed.length ? closed.reduce((b, t) => tradeNetPL(t) > tradeNetPL(b) ? t : b) : null;
+  const worst = closed.length ? closed.reduce((w, t) => tradeNetPL(t) < tradeNetPL(w) ? t : w) : null;
+  const mistakes = {};
+  closed.forEach(t => (t.mistakes || []).forEach(m => mistakes[m] = (mistakes[m] || 0) + 1));
+  const topMistake = Object.entries(mistakes).sort((a, b) => b[1] - a[1])[0];
+
+  return `
+    <div class="card">
+      <div class="card-row" style="margin-bottom:12px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm" data-jnav-month="-1">‹ Prev month</button>
+          <input type="month" data-jmonth value="${mk}" style="width:auto;"/>
+          <button class="btn btn-sm" data-jnav-month="1">Next month ›</button>
+        </div>
+        <div class="muted">${mk}</div>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="stat"><span class="stat-label">Trades</span><span class="stat-value">${closed.length}</span></div>
+        <div class="stat"><span class="stat-label">Win rate</span><span class="stat-value">${fmtPct(wr)}</span></div>
+        <div class="stat"><span class="stat-label">P&amp;L</span><span class="stat-value ${pl > 0 ? 'pos' : pl < 0 ? 'neg' : ''}">${fmtMoney(pl, { signed: true })}</span></div>
+        <div class="stat"><span class="stat-label">Top mistake</span><span class="stat-value" style="font-size:14px;">${topMistake ? escapeHtml(topMistake[0]) + ' ×' + topMistake[1] : '—'}</span></div>
+      </div>
+      <div class="grid grid-2" style="margin-bottom:14px;">
+        <div class="card-row"><span class="muted">Best trade</span><span class="mono pos">${best ? best.ticker + ' ' + fmtMoney(tradeNetPL(best), { signed: true }) : '—'}</span></div>
+        <div class="card-row"><span class="muted">Worst trade</span><span class="mono neg">${worst ? worst.ticker + ' ' + fmtMoney(tradeNetPL(worst), { signed: true }) : '—'}</span></div>
+      </div>
+      <div class="form-grid">
+        <div class="field field-full"><label>Reflection</label><textarea data-jmonthly="reflection" style="min-height:120px;" placeholder="Looking at the numbers, what stands out?">${escapeHtml(data.reflection)}</textarea></div>
+        <div class="field field-full"><label>Goal for next month</label><textarea data-jmonthly="goalForNext" style="min-height:80px;">${escapeHtml(data.goalForNext)}</textarea></div>
+      </div>
+    </div>`;
+}
+
+function renderJournalSearch() {
+  const s = Store.get();
+  const q = journalState.search.toLowerCase();
+  const hits = [];
+  Object.entries(s.journal.daily).forEach(([k, v]) => {
+    if (v && v.toLowerCase().includes(q)) hits.push({ kind: 'daily', key: k, text: v });
+  });
+  Object.entries(s.journal.weekly).forEach(([k, v]) => {
+    const blob = [v.worked, v.didntWork, v.lesson, v.adjustment].join(' ').toLowerCase();
+    if (blob.includes(q)) hits.push({ kind: 'weekly', key: k, text: blob.slice(0, 200) });
+  });
+  Object.entries(s.journal.monthly).forEach(([k, v]) => {
+    const blob = [v.reflection, v.goalForNext].join(' ').toLowerCase();
+    if (blob.includes(q)) hits.push({ kind: 'monthly', key: k, text: blob.slice(0, 200) });
+  });
+  if (!hits.length) return `<div class="empty"><div class="empty-icon">${ICONS.search}</div><h3 class="empty-title">No matches</h3></div>`;
+  return `
+    <div class="card">
+      <div class="muted" style="margin-bottom:10px;">${hits.length} ${hits.length === 1 ? 'result' : 'results'}</div>
+      ${hits.map(h => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span class="tag">${h.kind}</span><span class="mono muted">${h.key}</span>
+          </div>
+          <div>${escapeHtml(h.text.slice(0, 240))}${h.text.length > 240 ? '…' : ''}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function wireJournalEditors() {
+  const navBtns = document.querySelectorAll('[data-jnav]');
+  navBtns.forEach(b => b.addEventListener('click', () => {
+    const d = new Date(journalState.date);
+    d.setDate(d.getDate() + parseInt(b.dataset.jnav, 10));
+    journalState.date = dayKey(d); viewJournal();
+  }));
+  const navMonth = document.querySelectorAll('[data-jnav-month]');
+  navMonth.forEach(b => b.addEventListener('click', () => {
+    const d = new Date(journalState.date);
+    d.setMonth(d.getMonth() + parseInt(b.dataset.jnavMonth, 10));
+    journalState.date = dayKey(d); viewJournal();
+  }));
+  const date = document.querySelector('[data-jdate]');
+  if (date) date.addEventListener('change', () => { journalState.date = date.value; viewJournal(); });
+  const mo = document.querySelector('[data-jmonth]');
+  if (mo) mo.addEventListener('change', () => { journalState.date = mo.value + '-01'; viewJournal(); });
+
+  const daily = document.querySelector('[data-jdaily]');
+  if (daily) {
+    const save = debounce(() => {
+      Store.set(st => { st.journal.daily[journalState.date] = daily.value; });
+    }, 400);
+    daily.addEventListener('input', save);
+  }
+  document.querySelectorAll('[data-jweekly]').forEach(t => {
+    const save = debounce(() => {
+      const wk = weekKey(new Date(journalState.date));
+      Store.set(st => {
+        st.journal.weekly[wk] = st.journal.weekly[wk] || { worked: '', didntWork: '', lesson: '', adjustment: '' };
+        st.journal.weekly[wk][t.dataset.jweekly] = t.value;
+      });
+    }, 400);
+    t.addEventListener('input', save);
+  });
+  document.querySelectorAll('[data-jmonthly]').forEach(t => {
+    const save = debounce(() => {
+      const mk = monthKey(new Date(journalState.date));
+      Store.set(st => {
+        st.journal.monthly[mk] = st.journal.monthly[mk] || { reflection: '', goalForNext: '' };
+        st.journal.monthly[mk][t.dataset.jmonthly] = t.value;
+      });
+    }, 400);
+    t.addEventListener('input', save);
+  });
+}
+
+/* ============================================================
+   SETTINGS VIEW
+   ============================================================ */
+function viewSettings() {
+  const s = Store.get();
+  const html = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Accounts, preferences, tags, backup</p>
+      </div>
+    </div>
+
+    <div class="grid grid-12">
+      <div class="card span-6">
+        <h3 class="card-title">Accounts</h3>
+        ${s.accounts.length === 0 ? '<p class="muted">No accounts yet. Add one to start logging trades.</p>' : `
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${s.accounts.map(a => `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-elev-2);border:1px solid var(--border);border-radius:6px;">
+                <div>
+                  <div><strong>${escapeHtml(a.name)}</strong> <span class="tag">${escapeHtml(a.type)}</span></div>
+                  <div class="muted" style="font-size:12px;">Starting ${fmtMoney(a.startingCapital || 0)} · Fee ${a.defaultFeeType === 'pct' ? (a.defaultFeeValue || 0) + '%' : fmtMoney(a.defaultFeeValue || 0)}</div>
+                </div>
+                <div>
+                  <button class="btn btn-sm btn-ghost" data-edit-acc="${a.id}">${ICONS.edit}</button>
+                  <button class="btn btn-sm btn-ghost" data-del-acc="${a.id}">${ICONS.trash}</button>
+                </div>
+              </div>`).join('')}
+          </div>`}
+        <div style="margin-top:12px;">
+          <button class="btn btn-primary btn-sm" data-action="new-account">${ICONS.plus}<span>Add account</span></button>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <h3 class="card-title">Preferences</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label>Currency</label>
+            <select data-pref="currency">
+              ${Object.entries(CURRENCIES).map(([k, v]) => `<option value="${k}" ${k === s.meta.currency ? 'selected' : ''}>${k} — ${v.symbol}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>Date format</label>
+            <select data-pref="dateFormat">
+              <option value="MM/DD/YYYY" ${s.meta.dateFormat === 'MM/DD/YYYY' ? 'selected' : ''}>MM/DD/YYYY</option>
+              <option value="DD/MM/YYYY" ${s.meta.dateFormat === 'DD/MM/YYYY' ? 'selected' : ''}>DD/MM/YYYY</option>
+              <option value="YYYY-MM-DD" ${s.meta.dateFormat === 'YYYY-MM-DD' ? 'selected' : ''}>YYYY-MM-DD</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Decimal precision</label>
+            <select data-pref="decimals">
+              <option value="2" ${s.meta.decimals == 2 ? 'selected' : ''}>2</option>
+              <option value="4" ${s.meta.decimals == 4 ? 'selected' : ''}>4</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Theme</label>
+            <select data-pref="theme">
+              <option value="dark" ${s.meta.theme === 'dark' ? 'selected' : ''}>Dark</option>
+              <option value="light" ${s.meta.theme === 'light' ? 'selected' : ''}>Light</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <h3 class="card-title">Custom tags</h3>
+        ${tagEditor('strategy', 'Strategies', s.customTags.strategy)}
+        ${tagEditor('setup', 'Setup types', s.customTags.setup)}
+        ${tagEditor('mistake', 'Mistakes', s.customTags.mistake)}
+      </div>
+
+      <div class="card span-6">
+        <h3 class="card-title">Pre-trade checklist</h3>
+        <div class="checklist" style="margin-bottom:10px;">
+          ${s.checklist.items.map(it => `
+            <div class="checklist-item">
+              <input type="checkbox" data-cl-enabled="${it.id}" ${it.enabled ? 'checked' : ''}/>
+              <span style="flex:1;">${escapeHtml(it.text)}</span>
+              <button class="btn btn-sm btn-ghost" data-cl-del="${it.id}">${ICONS.close}</button>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="text" data-cl-new placeholder="Add a check…" style="flex:1;"/>
+          <button class="btn btn-sm" data-action="cl-add">Add</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox" data-cl-required ${s.checklist.required ? 'checked' : ''}/>
+          Require all enabled checks before saving a trade
+        </label>
+      </div>
+
+      <div class="card span-6">
+        <h3 class="card-title">Goals</h3>
+        <div class="form-grid">
+          <div class="field"><label>Annual return target (%)</label><input type="number" step="any" data-goal="annualReturnPct" value="${s.goals.annualReturnPct || ''}"/></div>
+          <div class="field"><label>Monthly contribution</label><input type="number" step="any" data-goal="monthlyContribution" value="${s.goals.monthlyContribution || ''}"/></div>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="muted" style="font-size:12px;margin-bottom:6px;">Net worth milestones</div>
+          ${(s.goals.milestones || []).map((m, i) => `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+              <input type="text" placeholder="Label" data-milestone="${i}" data-key="label" value="${escapeHtml(m.label || '')}" style="flex:1;"/>
+              <input type="number" placeholder="Amount" data-milestone="${i}" data-key="value" value="${m.value || ''}" style="width:140px;"/>
+              <button class="btn btn-sm btn-ghost" data-milestone-del="${i}">${ICONS.close}</button>
+            </div>`).join('')}
+          <button class="btn btn-sm" data-action="add-milestone">${ICONS.plus}<span>Add milestone</span></button>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <h3 class="card-title">Backup &amp; restore</h3>
+        <p class="muted" style="font-size:13px;">${s.meta.lastBackup ? 'Last backup: ' + fmtDate(s.meta.lastBackup, true) : 'No backup yet.'}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" data-action="export">${ICONS.download}<span>Export JSON</span></button>
+          <button class="btn" data-action="import">${ICONS.upload}<span>Import JSON</span></button>
+          <input type="file" data-import-file accept="application/json" style="display:none;"/>
+        </div>
+      </div>
+
+      <div class="card span-12" style="border-color:var(--neg);">
+        <h3 class="card-title" style="color:var(--neg);">Danger zone</h3>
+        <p class="muted" style="font-size:13px;">Permanently erase all trades, accounts, journal entries, and settings.</p>
+        <button class="btn btn-danger" data-action="reset">${ICONS.trash}<span>Reset all data</span></button>
+      </div>
+
+      <div class="card span-12" style="text-align:center;">
+        <div class="muted" style="font-size:12px;">Trading Tracker · v1.0 · Built for traders who want their data to stay theirs.</div>
+      </div>
+    </div>
+  `;
+  mountView(html);
+  wireSettings();
+}
+
+function tagEditor(kind, label, tags) {
+  return `
+    <div style="margin-bottom:12px;">
+      <div class="muted" style="font-size:12px;margin-bottom:6px;">${label}</div>
+      <div class="chips" style="margin-bottom:6px;">
+        ${tags.map(t => `<span class="chip">${escapeHtml(t)}<span class="chip-remove" data-tag-del="${kind}|${escapeHtml(t)}">×</span></span>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" data-tag-input="${kind}" placeholder="Add a ${label.toLowerCase().slice(0, -1)}…" style="flex:1;"/>
+        <button class="btn btn-sm" data-tag-add="${kind}">Add</button>
+      </div>
+    </div>`;
+}
+
+function wireSettings() {
+  // Accounts
+  document.querySelector('[data-action="new-account"]').addEventListener('click', () => openAccountForm());
+  document.querySelectorAll('[data-edit-acc]').forEach(b => b.addEventListener('click', () => openAccountForm(b.dataset.editAcc)));
+  document.querySelectorAll('[data-del-acc]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.delAcc;
+    const acc = Store.get().accounts.find(a => a.id === id);
+    const tradeCount = Store.get().trades.filter(t => t.accountId === id).length;
+    confirmModal({
+      title: 'Delete account?',
+      message: `${acc.name} has ${tradeCount} trade${tradeCount === 1 ? '' : 's'}. Deleting the account will also delete those trades.`,
+      confirmText: 'Delete', danger: true,
+      onConfirm: () => {
+        Store.set(st => {
+          st.accounts = st.accounts.filter(a => a.id !== id);
+          st.trades = st.trades.filter(t => t.accountId !== id);
+        });
+        viewSettings(); rerender();
+      }
+    });
+  }));
+
+  // Preferences
+  document.querySelectorAll('[data-pref]').forEach(el => el.addEventListener('change', () => {
+    Store.set(st => {
+      const v = el.dataset.pref === 'decimals' ? parseInt(el.value, 10) : el.value;
+      st.meta[el.dataset.pref] = v;
+    });
+    rerender();
+  }));
+
+  // Custom tags
+  document.querySelectorAll('[data-tag-add]').forEach(b => b.addEventListener('click', () => {
+    const kind = b.dataset.tagAdd;
+    const inp = document.querySelector(`[data-tag-input="${kind}"]`);
+    const v = inp.value.trim();
+    if (!v) return;
+    Store.set(st => { if (!st.customTags[kind].includes(v)) st.customTags[kind].push(v); });
+    viewSettings();
+  }));
+  document.querySelectorAll('[data-tag-del]').forEach(el => el.addEventListener('click', () => {
+    const [kind, tag] = el.dataset.tagDel.split('|');
+    Store.set(st => { st.customTags[kind] = st.customTags[kind].filter(t => t !== tag); });
+    viewSettings();
+  }));
+
+  // Checklist
+  document.querySelectorAll('[data-cl-enabled]').forEach(c => c.addEventListener('change', () => {
+    Store.set(st => { st.checklist.items.find(i => i.id === c.dataset.clEnabled).enabled = c.checked; });
+  }));
+  document.querySelectorAll('[data-cl-del]').forEach(b => b.addEventListener('click', () => {
+    Store.set(st => { st.checklist.items = st.checklist.items.filter(i => i.id !== b.dataset.clDel); });
+    viewSettings();
+  }));
+  document.querySelector('[data-action="cl-add"]').addEventListener('click', () => {
+    const inp = document.querySelector('[data-cl-new]');
+    const v = inp.value.trim();
+    if (!v) return;
+    Store.set(st => { st.checklist.items.push({ id: uid(), text: v, enabled: true }); });
+    viewSettings();
+  });
+  document.querySelector('[data-cl-required]').addEventListener('change', e => {
+    Store.set(st => { st.checklist.required = e.target.checked; });
+  });
+
+  // Goals
+  document.querySelectorAll('[data-goal]').forEach(el => el.addEventListener('change', () => {
+    Store.set(st => { st.goals[el.dataset.goal] = el.value ? parseFloat(el.value) : null; });
+  }));
+  document.querySelectorAll('[data-milestone]').forEach(el => el.addEventListener('change', () => {
+    const i = parseInt(el.dataset.milestone, 10);
+    const k = el.dataset.key;
+    Store.set(st => {
+      st.goals.milestones[i] = st.goals.milestones[i] || { label: '', value: 0 };
+      st.goals.milestones[i][k] = k === 'value' ? parseFloat(el.value) : el.value;
+    });
+  }));
+  document.querySelectorAll('[data-milestone-del]').forEach(b => b.addEventListener('click', () => {
+    Store.set(st => { st.goals.milestones.splice(parseInt(b.dataset.milestoneDel, 10), 1); });
+    viewSettings();
+  }));
+  document.querySelector('[data-action="add-milestone"]').addEventListener('click', () => {
+    Store.set(st => { st.goals.milestones = st.goals.milestones || []; st.goals.milestones.push({ label: '', value: 0 }); });
+    viewSettings();
+  });
+
+  // Backup
+  document.querySelector('[data-action="export"]').addEventListener('click', () => {
+    Store.exportJSON();
+    toast('Backup downloaded', 'success');
+    viewSettings();
+  });
+  document.querySelector('[data-action="import"]').addEventListener('click', () => document.querySelector('[data-import-file]').click());
+  document.querySelector('[data-import-file]').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      confirmModal({
+        title: 'Replace all data?',
+        message: 'Importing will overwrite every trade, account, and setting in this browser.',
+        confirmText: 'Replace', danger: true,
+        onConfirm: () => {
+          const ok = Store.importJSON(ev.target.result);
+          if (ok) { toast('Backup restored', 'success'); rerender(); }
+          else toast('Invalid backup file', 'error');
+        }
+      });
+    };
+    reader.readAsText(file);
+  });
+
+  // Reset
+  document.querySelector('[data-action="reset"]').addEventListener('click', () => {
+    modal({
+      title: 'Reset all data', size: 'modal-sm',
+      body: `<p style="margin:0 0 12px;color:var(--text-dim);">This permanently deletes everything. Type <strong>DELETE</strong> below to confirm.</p>
+        <input type="text" data-reset-confirm placeholder="DELETE"/>`,
+      footer: `<button class="btn" data-close>Cancel</button><button class="btn btn-danger" data-do-reset disabled>Reset</button>`,
+      onMount(overlay, close) {
+        const inp = overlay.querySelector('[data-reset-confirm]');
+        const btn = overlay.querySelector('[data-do-reset]');
+        inp.addEventListener('input', () => { btn.disabled = inp.value !== 'DELETE'; });
+        btn.addEventListener('click', () => {
+          Store.reset(); close(); toast('All data wiped', 'success'); Router.nav('#/dashboard'); rerender();
+        });
+      }
+    });
+  });
+}
+
+function openAccountForm(id = null) {
+  const s = Store.get();
+  const editing = id ? s.accounts.find(a => a.id === id) : null;
+  const a = editing || { name: '', type: 'Broker', startingCapital: 0, defaultFeeType: 'flat', defaultFeeValue: 0, notes: '' };
+  const body = `
+    <form id="acc-form">
+      <div class="form-grid">
+        <div class="field field-full"><label>Name</label><input name="name" required value="${escapeHtml(a.name)}"/></div>
+        <div class="field"><label>Type</label>
+          <select name="type">${['Broker','Crypto Exchange','Wallet','Bank'].map(x => `<option ${x === a.type ? 'selected' : ''}>${x}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Starting capital</label><input type="number" step="any" name="startingCapital" value="${a.startingCapital || ''}"/></div>
+        <div class="field"><label>Default fee type</label>
+          <select name="defaultFeeType"><option value="flat" ${a.defaultFeeType === 'flat' ? 'selected' : ''}>Flat amount</option><option value="pct" ${a.defaultFeeType === 'pct' ? 'selected' : ''}>Percent</option></select>
+        </div>
+        <div class="field"><label>Default fee value</label><input type="number" step="any" name="defaultFeeValue" value="${a.defaultFeeValue || 0}"/></div>
+        <div class="field field-full"><label>Notes</label><textarea name="notes">${escapeHtml(a.notes || '')}</textarea></div>
+      </div>
+    </form>`;
+  const footer = `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" data-save>Save</button>`;
+  modal({
+    title: editing ? 'Edit account' : 'New account', body, footer,
+    onMount(overlay, close) {
+      const form = overlay.querySelector('#acc-form');
+      overlay.querySelector('[data-save]').addEventListener('click', () => {
+        const name = form.name.value.trim();
+        if (!name) { form.name.classList.add('invalid'); return; }
+        const payload = {
+          name, type: form.type.value,
+          startingCapital: parseFloat(form.startingCapital.value) || 0,
+          defaultFeeType: form.defaultFeeType.value,
+          defaultFeeValue: parseFloat(form.defaultFeeValue.value) || 0,
+          notes: form.notes.value.trim(),
+        };
+        Store.set(st => {
+          if (editing) { Object.assign(st.accounts.find(x => x.id === editing.id), payload); }
+          else { st.accounts.push(Object.assign({ id: uid(), createdAt: new Date().toISOString() }, payload)); }
+        });
+        close(); viewSettings(); rerender();
+      });
+    }
+  });
+}
+
+/* ============================================================
+   ROUTES MAP
+   ============================================================ */
+ROUTES.dashboard = viewDashboard;
+ROUTES.trades = viewTrades;
+ROUTES.portfolio = viewPortfolio;
+ROUTES.analytics = viewAnalytics;
+ROUTES.watchlist = viewWatchlist;
+ROUTES.journal = viewJournal;
+ROUTES.settings = viewSettings;
+
+Router.on('dashboard', viewDashboard);
+Router.on('trades', viewTrades);
+Router.on('portfolio', viewPortfolio);
+Router.on('analytics', viewAnalytics);
+Router.on('watchlist', viewWatchlist);
+Router.on('journal', viewJournal);
+Router.on('settings', viewSettings);
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================ */
+function bindShortcuts() {
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault(); openTradeForm();
+    } else if (e.key === '/') {
+      e.preventDefault();
+      // Focus the first search input on the current view
+      const s = document.querySelector('[data-f="search"], [data-jsearch]');
+      if (s) s.focus();
+    } else if (e.key === '?') {
+      e.preventDefault();
+      modal({
+        title: 'Keyboard shortcuts', size: 'modal-sm',
+        body: `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="card-row"><span>New trade</span><span class="keyhint">N</span></div>
+            <div class="card-row"><span>Focus search</span><span class="keyhint">/</span></div>
+            <div class="card-row"><span>Show shortcuts</span><span class="keyhint">?</span></div>
+            <div class="card-row"><span>Close modal</span><span class="keyhint">Esc</span></div>
+          </div>`,
+        footer: `<button class="btn" data-close>Close</button>`,
+        onMount() {}
+      });
+    }
+  });
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  Store.load();
+  const s = Store.get();
+  document.documentElement.setAttribute('data-theme', s.meta.theme === 'light' ? 'light' : 'dark');
+  if (!s.meta.onboarded) {
+    renderOnboarding();
+    return;
+  }
+  if (!location.hash || location.hash === '#') location.hash = '#/dashboard';
+  Router.init();
+  bindShortcuts();
+  maybeShowIOSChromeBanner();
+}
+
+/* ============================================================
+   PWA — service worker registration. Cache-first shell, so the
+   app launches instantly offline after install.
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('sw.js')
+      .catch(err => console.warn('SW registration failed', err));
+  });
+}
+
+// Boot once DOM is ready.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
