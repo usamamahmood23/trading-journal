@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0d12" />
+<meta name="theme-color" content="#f7f8fa" />
 <title>Trading Tracker</title>
 <!-- PWA -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -159,6 +159,7 @@ a { color: var(--accent); text-decoration: none; }
 .topbar-stat .label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
 .topbar-stat .value { font-family: var(--mono); font-weight: 600; font-size: 15px; }
 .topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.topbar-actions [data-action="mobile-settings"] { display: none; }
 
 .main {
   grid-area: main;
@@ -582,10 +583,16 @@ input[type="file"] { padding: 6px; }
     text-align: center;
   }
   .nav-item svg { width: 18px; height: 18px; }
+  /* Settings drops out of the bottom bar; it moves to the topbar instead. */
+  .nav-item[data-nav="settings"] { display: none; }
   .topbar { padding: 0 12px; gap: 8px; }
-  .topbar-stats { gap: 12px; }
-  .topbar-stat .label { font-size: 9px; }
+  .topbar-stats { gap: 14px; }
+  .topbar-stat .label { font-size: 10px; }
   .topbar-stat .value { font-size: 13px; }
+  /* Compact "+" — drop the label, keep the icon. */
+  .topbar-actions [data-action="new-trade"] span { display: none; }
+  /* Mobile-only Settings gear in the topbar. */
+  .topbar-actions [data-action="mobile-settings"] { display: inline-flex; }
   .main { padding: 14px; }
   .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr 1fr; }
   .form-grid { grid-template-columns: 1fr; }
@@ -734,7 +741,7 @@ const DEFAULT_STATE = () => ({
     currency: 'USD',
     dateFormat: 'MM/DD/YYYY',
     decimals: 2,
-    theme: 'dark',
+    theme: 'light',
     onboarded: false,
     backupSnoozeUntil: null,
   },
@@ -1250,6 +1257,28 @@ function confirmModal({ title = 'Are you sure?', message = '', confirmText = 'Co
 /* ============================================================
    APP SHELL — renders sidebar + topbar; views mount into .main-inner
    ============================================================ */
+/* ============================================================
+   THEME — resolves "system" via prefers-color-scheme and keeps the
+   <html data-theme> attribute in sync. The OS media query is only
+   listened to while the user has explicitly chosen "system".
+   ============================================================ */
+const systemThemeMQ = window.matchMedia('(prefers-color-scheme: dark)');
+function resolveTheme() {
+  const t = Store.get().meta.theme;
+  if (t === 'system') return systemThemeMQ.matches ? 'dark' : 'light';
+  return t === 'dark' ? 'dark' : 'light';
+}
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', resolveTheme());
+}
+function onSystemThemeChange() {
+  if (Store.get().meta.theme === 'system') applyTheme();
+}
+// Subscribe once. Safari < 14 lacks addEventListener on MediaQueryList; the
+// addListener fallback covers it.
+if (systemThemeMQ.addEventListener) systemThemeMQ.addEventListener('change', onSystemThemeChange);
+else if (systemThemeMQ.addListener) systemThemeMQ.addListener(onSystemThemeChange);
+
 const NAV = [
   { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { route: 'trades',    label: 'Trades',    icon: 'trades' },
@@ -1262,7 +1291,7 @@ const NAV = [
 
 function renderShell() {
   const s = Store.get();
-  document.documentElement.setAttribute('data-theme', s.meta.theme === 'light' ? 'light' : 'dark');
+  applyTheme();
   const stats = getStats();
   const todayClass = stats.todayPL > 0 ? 'pos' : (stats.todayPL < 0 ? 'neg' : '');
   document.getElementById('app').innerHTML = `
@@ -1295,8 +1324,8 @@ function renderShell() {
           <button class="btn btn-ghost btn-icon" data-action="install-app" title="Install app" hidden>
             ${ICONS.download}
           </button>
-          <button class="btn btn-ghost btn-icon" data-action="toggle-theme" title="Toggle theme">
-            ${s.meta.theme === 'light' ? ICONS.moon : ICONS.sun}
+          <button class="btn btn-ghost btn-icon" data-action="mobile-settings" title="Settings">
+            ${ICONS.settings}
           </button>
           <button class="btn btn-primary" data-action="new-trade">
             ${ICONS.plus}<span>New Trade</span>
@@ -1313,9 +1342,8 @@ function renderShell() {
     el.classList.toggle('active', el.dataset.nav === route);
   });
   // Wire actions
-  document.querySelector('[data-action="toggle-theme"]').addEventListener('click', () => {
-    Store.set(st => { st.meta.theme = st.meta.theme === 'light' ? 'dark' : 'light'; });
-    rerender();
+  document.querySelector('[data-action="mobile-settings"]').addEventListener('click', () => {
+    Router.nav('#/settings');
   });
   document.querySelector('[data-action="new-trade"]').addEventListener('click', openTradeForm);
 
@@ -3515,8 +3543,9 @@ function viewSettings() {
           <div class="field">
             <label>Theme</label>
             <select data-pref="theme">
-              <option value="dark" ${s.meta.theme === 'dark' ? 'selected' : ''}>Dark</option>
               <option value="light" ${s.meta.theme === 'light' ? 'selected' : ''}>Light</option>
+              <option value="dark" ${s.meta.theme === 'dark' ? 'selected' : ''}>Dark</option>
+              <option value="system" ${s.meta.theme === 'system' ? 'selected' : ''}>Match system</option>
             </select>
           </div>
         </div>
@@ -3837,7 +3866,7 @@ function bindShortcuts() {
 function init() {
   Store.load();
   const s = Store.get();
-  document.documentElement.setAttribute('data-theme', s.meta.theme === 'light' ? 'light' : 'dark');
+  applyTheme();
   if (!s.meta.onboarded) {
     renderOnboarding();
     return;
